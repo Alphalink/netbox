@@ -1,20 +1,16 @@
-from django.conf.urls import include, url
-
 from rest_framework import routers
 
 from . import views
 
 
 router = routers.DefaultRouter()
+
+# Secrets
 router.register(r'secret-roles', views.SecretRoleViewSet)
 router.register(r'secrets', views.SecretViewSet)
 
-urlpatterns = [
+# Miscellaneous
+router.register(r'get-session-key', views.GetSessionKeyViewSet, base_name='get-session-key')
+router.register(r'generate-rsa-key-pair', views.GenerateRSAKeyPairViewSet, base_name='generate-rsa-key-pair')
 
-    url(r'', include(router.urls)),
-
-    # Miscellaneous
-    url(r'^get-session-key/$', views.GetSessionKey.as_view(), name='get_session_key'),
-    url(r'^generate-keys/$', views.RSAKeyGeneratorView.as_view(), name='generate_keys'),
-
-]
+urlpatterns = router.urls

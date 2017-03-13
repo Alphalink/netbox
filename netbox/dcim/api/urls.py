@@ -1,8 +1,5 @@
-from django.conf.urls import include, url
-
 from rest_framework import routers
 
-from extras.api.views import TopologyMapView
 from ipam.api.views import ServiceViewSet
 from . import views
 
@@ -49,12 +46,7 @@ router.register(r'services', ServiceViewSet)
 # Interface connections
 router.register(r'interface-connections', views.InterfaceConnectionViewSet)
 
-urlpatterns = [
+# Miscellaneous
+router.register(r'connected-device', views.ConnectedDeviceViewSet, base_name='connected-device')
 
-    url(r'', include(router.urls)),
-
-    # Miscellaneous
-    url(r'^related-connections/$', views.RelatedConnectionsView.as_view(), name='related_connections'),
-    url(r'^topology-maps/(?P<slug>[\w-]+)/$', TopologyMapView.as_view(), name='topology_map'),
-
-]
+urlpatterns = router.urls
