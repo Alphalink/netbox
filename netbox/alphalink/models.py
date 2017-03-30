@@ -14,7 +14,7 @@ from django.db import models
 from django.db.models import Count, Q, ObjectDoesNotExist
 from django.utils.encoding import python_2_unicode_compatible
 
-from dcim.models import Device, Module, DeviceType
+from dcim.models import Device, InventoryItem, DeviceType
 from circuits.models import Circuit
 from extras.models import CustomFieldModel, CustomField, CustomFieldValue
 from extras.rpc import RPC_CLIENTS
@@ -69,7 +69,7 @@ class Cluster(CreatedUpdatedModel):
         resources = Device.objects.filter(cluster__name=self.name, device_type=resource_device_type)
         type_used = 0
         for resource in resources:
-          resource_modules = Module.objects.filter(device=resource, name=type)
+          resource_modules = InventoryItem.objects.filter(device=resource, name=type)
           for module in resource_modules:
             type_used = type_used + int(module.part_id)
         return type_used

@@ -14,7 +14,7 @@ from django.utils.http import urlencode
 from django.views.generic import View
 
 from ipam.models import Prefix, IPAddress, Service, VLAN
-from dcim.models import Device, DeviceType, Module
+from dcim.models import Device, DeviceType, InventoryItem
 from dcim.forms import DeviceForm
 from circuits.models import Circuit
 from extras.models import Graph, TopologyMap, GRAPH_TYPE_INTERFACE, GRAPH_TYPE_SITE
@@ -62,7 +62,7 @@ def cluster(request, slug):
       tmp_module.name = resource.name
       tmp_module.memory = 0
       tmp_module.cpu = 0
-      modules_resource = Module.objects.filter(device=resource).filter(Q(name="CPU") | Q(name="RAM"))
+      modules_resource = InventoryItem.objects.filter(device=resource).filter(Q(name="CPU") | Q(name="RAM"))
       for module in modules_resource:
 	if module.name == "CPU":
           tmp_module.cpu = tmp_module.cpu + int(module.part_id)
