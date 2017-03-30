@@ -74,6 +74,15 @@
                             {% endif %}
                         </ul>
                     </li>
+                    <li class="dropdown{% if request.path|startswith:'/alphalink/vresources' %} active{% endif %}">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Virtual resources <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="{% url 'alphalink:cluster_list' %}"><i class="fa fa-search" aria-hidden="true"></i> Clusters</a></li>
+                            {% if perms.alphalink.add_cluster %}
+                                <li><a href="{% url 'alphalink:cluster_add' %}"><i class="fa fa-plus" aria-hidden="true"></i> Add a Cluster</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
                     <li class="dropdown{% if request.path|startswith:'/dcim/device' or request.path|startswith:'/dcim/manufacturers/' or request.path|startswith:'/dcim/platforms/' %} active{% endif %}">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Devices <span class="caret"></span></a>
                         <ul class="dropdown-menu">

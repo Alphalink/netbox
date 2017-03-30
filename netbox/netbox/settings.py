@@ -124,6 +124,7 @@ INSTALLED_APPS = (
     'tenancy',
     'users',
     'utilities',
+    'alphalink',
 )
 
 # Middleware

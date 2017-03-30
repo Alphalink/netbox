@@ -26,6 +26,9 @@ _patterns = [
     url(r'^tenancy/', include('tenancy.urls', namespace='tenancy')),
     url(r'^user/', include('users.urls', namespace='user')),
 
+    # Alphalink app
+    url(r'^alphalink/', include('alphalink.urls', namespace='alphalink')),
+
     # API
     url(r'^api/$', APIRootView.as_view(), name='api-root'),
     url(r'^api/circuits/', include('circuits.api.urls', namespace='circuits-api')),

@@ -931,6 +931,7 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
     primary_ip6 = models.OneToOneField('ipam.IPAddress', related_name='primary_ip6_for', on_delete=models.SET_NULL,
                                        blank=True, null=True, verbose_name='Primary IPv6')
     comments = models.TextField(blank=True)
+    cluster = models.ForeignKey('alphalink.Cluster', related_name='members', on_delete=models.PROTECT, blank=True, null=True)
     custom_field_values = GenericRelation(CustomFieldValue, content_type_field='obj_type', object_id_field='obj_id')
 
     objects = DeviceManager()
