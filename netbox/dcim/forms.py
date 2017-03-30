@@ -23,7 +23,7 @@ from .models import (
     Interface, IFACE_FF_CHOICES, IFACE_FF_LAG, IFACE_ORDERING_CHOICES, InterfaceConnection, InterfaceTemplate,
     Manufacturer, Module, Platform, PowerOutlet, PowerOutletTemplate, PowerPort, PowerPortTemplate, RACK_TYPE_CHOICES,
     RACK_WIDTH_CHOICES, Rack, RackGroup, RackReservation, RackRole, Region, Site, STATUS_CHOICES, SUBDEVICE_ROLE_CHILD,
-    VIRTUAL_IFACE_TYPES
+    SUBDEVICE_ROLE_PARENT, VIRTUAL_IFACE_TYPES
 )
 
 
@@ -375,6 +375,21 @@ class DeviceTypeFilterForm(BootstrapMixin, CustomFieldFilterForm):
         queryset=Manufacturer.objects.annotate(filter_count=Count('device_types')),
         to_field_name='slug'
     )
+    is_console_server = forms.BooleanField(
+        required=False, label='Is a console server', widget=forms.CheckboxInput(attrs={'value': 'True'}))
+    is_pdu = forms.BooleanField(
+        required=False, label='Is a PDU', widget=forms.CheckboxInput(attrs={'value': 'True'})
+    )
+    is_network_device = forms.BooleanField(
+        required=False, label='Is a network device', widget=forms.CheckboxInput(attrs={'value': 'True'})
+    )
+    subdevice_role = forms.NullBooleanField(
+        required=False, label='Subdevice role', widget=forms.Select(choices=(
+            ('', '---------'),
+            (SUBDEVICE_ROLE_PARENT, 'Parent'),
+            (SUBDEVICE_ROLE_CHILD, 'Child'),
+        ))
+    )
 
 
 #
@@ -680,13 +695,21 @@ class DeviceFromCSVForm(BaseDeviceFromCSVForm):
 
 
 class ChildDeviceFromCSVForm(BaseDeviceFromCSVForm):
-    parent = FlexibleModelChoiceField(queryset=Device.objects.all(), to_field_name='name', required=False,
-                                      error_messages={'invalid_choice': 'Parent device not found.'})
+    parent = FlexibleModelChoiceField(
+        queryset=Device.objects.all(),
+        to_field_name='name',
+        required=False,
+        error_messages={
+            'invalid_choice': 'Parent device not found.'
+        }
+    )
     device_bay_name = forms.CharField(required=False)
 
     class Meta(BaseDeviceFromCSVForm.Meta):
-        fields = ['name', 'device_role', 'tenant', 'manufacturer', 'model_name', 'platform', 'serial', 'asset_tag',
-                  'parent', 'device_bay_name']
+        fields = [
+            'name', 'device_role', 'tenant', 'manufacturer', 'model_name', 'platform', 'serial', 'asset_tag', 'parent',
+            'device_bay_name',
+        ]
 
     def clean(self):
 
@@ -733,7 +756,7 @@ class DeviceFilterForm(BootstrapMixin, CustomFieldFilterForm):
     model = Device
     q = forms.CharField(required=False, label='Search')
     site = FilterChoiceField(
-        queryset=Site.objects.annotate(filter_count=Count('racks__devices')),
+        queryset=Site.objects.annotate(filter_count=Count('devices')),
         to_field_name='slug',
     )
     rack_group_id = FilterChoiceField(
@@ -1458,7 +1481,7 @@ class InterfaceConnectionForm(BootstrapMixin, forms.ModelForm):
         super(InterfaceConnectionForm, self).__init__(*args, **kwargs)
 
         # Initialize interface A choices
-        device_a_interfaces = Interface.objects.filter(device=device_a).exclude(
+        device_a_interfaces = Interface.objects.order_naturally().filter(device=device_a).exclude(
             form_factor__in=VIRTUAL_IFACE_TYPES
         ).select_related(
             'circuit_termination', 'connected_as_a', 'connected_as_b'
@@ -1610,20 +1633,23 @@ class DeviceBayCreateForm(DeviceComponentForm):
 
 
 class PopulateDeviceBayForm(BootstrapMixin, forms.Form):
-    installed_device = forms.ModelChoiceField(queryset=Device.objects.all(), label='Child Device',
-                                              help_text="Child devices must first be created within the rack occupied "
-                                                        "by the parent device. Then they can be assigned to a bay.")
+    installed_device = forms.ModelChoiceField(
+        queryset=Device.objects.all(),
+        label='Child Device',
+        help_text="Child devices must first be created and assigned to the site/rack of the parent device."
+    )
 
     def __init__(self, device_bay, *args, **kwargs):
 
         super(PopulateDeviceBayForm, self).__init__(*args, **kwargs)
 
-        children_queryset = Device.objects.filter(rack=device_bay.device.rack,
-                                                  parent_bay__isnull=True,
-                                                  device_type__u_height=0,
-                                                  device_type__subdevice_role=SUBDEVICE_ROLE_CHILD)\
-            .exclude(pk=device_bay.device.pk)
-        self.fields['installed_device'].queryset = children_queryset
+        self.fields['installed_device'].queryset = Device.objects.filter(
+            site=device_bay.device.site,
+            rack=device_bay.device.rack,
+            parent_bay__isnull=True,
+            device_type__u_height=0,
+            device_type__subdevice_role=SUBDEVICE_ROLE_CHILD
+        ).exclude(pk=device_bay.device.pk)
 
 
 #
@@ -1632,14 +1658,17 @@ class PopulateDeviceBayForm(BootstrapMixin, forms.Form):
 
 class ConsoleConnectionFilterForm(BootstrapMixin, forms.Form):
     site = forms.ModelChoiceField(required=False, queryset=Site.objects.all(), to_field_name='slug')
+    device = forms.CharField(required=False, label='Device name')
 
 
 class PowerConnectionFilterForm(BootstrapMixin, forms.Form):
     site = forms.ModelChoiceField(required=False, queryset=Site.objects.all(), to_field_name='slug')
+    device = forms.CharField(required=False, label='Device name')
 
 
 class InterfaceConnectionFilterForm(BootstrapMixin, forms.Form):
     site = forms.ModelChoiceField(required=False, queryset=Site.objects.all(), to_field_name='slug')
+    device = forms.CharField(required=False, label='Device name')
 
 
 #

@@ -90,7 +90,12 @@ class ComponentCreateView(View):
                     self.parent_field: parent.pk,
                     'name': name,
                 }
-                component_data.update(data)
+                # Replace objects with their primary key to keep component_form.clean() happy
+                for k, v in data.items():
+                    if hasattr(v, 'pk'):
+                        component_data[k] = v.pk
+                    else:
+                        component_data[k] = v
                 component_form = self.model_form(component_data)
                 if component_form.is_valid():
                     new_components.append(component_form.save(commit=False))
@@ -763,9 +768,12 @@ class ChildDeviceBulkImportView(PermissionRequiredMixin, BulkImportView):
     default_return_url = 'dcim:device_list'
 
     def save_obj(self, obj):
-        # Inherent rack from parent device
+
+        # Inherit site and rack from parent device
+        obj.site = obj.parent_bay.device.site
         obj.rack = obj.parent_bay.device.rack
         obj.save()
+
         # Save the reverse relation
         device_bay = obj.parent_bay
         device_bay.installed_device = obj
@@ -1442,9 +1450,10 @@ def interfaceconnection_add(request, pk):
             ))
             if '_addanother' in request.POST:
                 base_url = reverse('dcim:interfaceconnection_add', kwargs={'pk': device.pk})
+                device_b = interfaceconnection.interface_b.device
                 params = urlencode({
-                    'rack_b': interfaceconnection.interface_b.device.rack.pk,
-                    'device_b': interfaceconnection.interface_b.device.pk,
+                    'rack_b': device_b.rack.pk if device_b.rack else '',
+                    'device_b': device_b.pk,
                 })
                 return HttpResponseRedirect('{}?{}'.format(base_url, params))
             else:

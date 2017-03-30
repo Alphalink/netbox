@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from django_tables2 import RequestConfig
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -101,7 +102,13 @@ class ObjectListView(View):
         table = self.table(self.queryset)
         if 'pk' in table.base_columns and (permissions['change'] or permissions['delete']):
             table.base_columns['pk'].visible = True
-        RequestConfig(request, paginate={'klass': EnhancedPaginator}).configure(table)
+
+        # Apply the request context
+        paginate = {
+            'klass': EnhancedPaginator,
+            'per_page': request.GET.get('per_page', settings.PAGINATE_COUNT)
+        }
+        RequestConfig(request, paginate).configure(table)
 
         context = {
             'table': table,
@@ -434,7 +441,7 @@ class BulkEditView(View):
 
         # Are we editing *all* objects in the queryset or just a selected subset?
         if request.POST.get('_all') and self.filter is not None:
-            pk_list = [obj.pk for obj in self.filter(request.GET, self.cls.objects.only('pk'))]
+            pk_list = [obj.pk for obj in self.filter(request.GET, self.cls.objects.only('pk')).qs]
         else:
             pk_list = [int(pk) for pk in request.POST.getlist('pk')]
 
@@ -572,7 +579,7 @@ class BulkDeleteView(View):
 
         # Are we deleting *all* objects in the queryset or just a selected subset?
         if request.POST.get('_all') and self.filter is not None:
-            pk_list = [obj.pk for obj in self.filter(request.GET, self.cls.objects.only('pk'))]
+            pk_list = [obj.pk for obj in self.filter(request.GET, self.cls.objects.only('pk')).qs]
         else:
             pk_list = [int(pk) for pk in request.POST.getlist('pk')]
 
