@@ -15,7 +15,7 @@ from django.db.models import Count, Q, ObjectDoesNotExist
 from django.utils.encoding import python_2_unicode_compatible
 
 from circuits.models import Circuit
-from extras.models import CustomFieldModel, CustomField, CustomFieldValue
+from extras.models import CustomFieldModel, CustomField, CustomFieldValue, ImageAttachment
 from extras.rpc import RPC_CLIENTS
 from tenancy.models import Tenant
 from utilities.fields import ColorField, NullableCharField
@@ -254,6 +254,7 @@ class Site(CreatedUpdatedModel, CustomFieldModel):
     contact_email = models.EmailField(blank=True, verbose_name="Contact E-mail")
     comments = models.TextField(blank=True)
     custom_field_values = GenericRelation(CustomFieldValue, content_type_field='obj_type', object_id_field='obj_id')
+    images = GenericRelation(ImageAttachment)
 
     objects = SiteManager()
 
@@ -375,6 +376,7 @@ class Rack(CreatedUpdatedModel, CustomFieldModel):
                                      help_text='Units are numbered top-to-bottom')
     comments = models.TextField(blank=True)
     custom_field_values = GenericRelation(CustomFieldValue, content_type_field='obj_type', object_id_field='obj_id')
+    images = GenericRelation(ImageAttachment)
 
     objects = RackManager()
 
@@ -933,6 +935,7 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
     comments = models.TextField(blank=True)
     cluster = models.ForeignKey('alphalink.Cluster', related_name='members', on_delete=models.PROTECT, blank=True, null=True)
     custom_field_values = GenericRelation(CustomFieldValue, content_type_field='obj_type', object_id_field='obj_id')
+    images = GenericRelation(ImageAttachment)
 
     objects = DeviceManager()
 
