@@ -165,7 +165,7 @@ class CustomField(models.Model):
 
 @python_2_unicode_compatible
 class CustomFieldValue(models.Model):
-    field = models.ForeignKey('CustomField', related_name='values')
+    field = models.ForeignKey('CustomField', related_name='values', on_delete=models.CASCADE)
     obj_type = models.ForeignKey(ContentType, related_name='+', on_delete=models.PROTECT)
     obj_id = models.PositiveIntegerField()
     obj = GenericForeignKey('obj_type', 'obj_id')
@@ -254,7 +254,9 @@ class Graph(models.Model):
 
 @python_2_unicode_compatible
 class ExportTemplate(models.Model):
-    content_type = models.ForeignKey(ContentType, limit_choices_to={'model__in': EXPORTTEMPLATE_MODELS})
+    content_type = models.ForeignKey(
+        ContentType, limit_choices_to={'model__in': EXPORTTEMPLATE_MODELS}, on_delete=models.CASCADE
+    )
     name = models.CharField(max_length=100)
     description = models.CharField(max_length=200, blank=True)
     template_code = models.TextField()
@@ -294,7 +296,7 @@ class ExportTemplate(models.Model):
 class TopologyMap(models.Model):
     name = models.CharField(max_length=50, unique=True)
     slug = models.SlugField(unique=True)
-    site = models.ForeignKey('dcim.Site', related_name='topology_maps', blank=True, null=True)
+    site = models.ForeignKey('dcim.Site', related_name='topology_maps', blank=True, null=True, on_delete=models.CASCADE)
     device_patterns = models.TextField(
         help_text="Identify devices to include in the diagram using regular expressions, one per line. Each line will "
                   "result in a new tier of the drawing. Separate multiple regexes within a line using semicolons. "
@@ -316,6 +318,7 @@ class TopologyMap(models.Model):
 
     def render(self, img_format='png'):
 
+        from circuits.models import CircuitTermination
         from dcim.models import Device, InterfaceConnection
 
         # Construct the graph
@@ -334,9 +337,10 @@ class TopologyMap(models.Model):
             # Add each device to the graph
             devices = []
             for query in device_set.split(';'):  # Split regexes on semicolons
-                devices += Device.objects.filter(name__regex=query)
+                devices += Device.objects.filter(name__regex=query).select_related('device_role')
             for d in devices:
-                subgraph.node(d.name)
+                fillcolor = '#{}'.format(d.device_role.color)
+                subgraph.node(d.name, style='filled', fillcolor=fillcolor)
 
             # Add an invisible connection to each successive device in a set to enforce horizontal order
             for j in range(0, len(devices) - 1):
@@ -350,13 +354,19 @@ class TopologyMap(models.Model):
             for query in device_set.split(';'):  # Split regexes on semicolons
                 device_superset = device_superset | Q(name__regex=query)
 
-        # Add all connections to the graph
+        # Add all interface connections to the graph
         devices = Device.objects.filter(*(device_superset,))
         connections = InterfaceConnection.objects.filter(
             interface_a__device__in=devices, interface_b__device__in=devices
         )
         for c in connections:
             graph.edge(c.interface_a.device.name, c.interface_b.device.name)
+
+        # Add all circuits to the graph
+        for termination in CircuitTermination.objects.filter(term_side='A', interface__device__in=devices):
+            peer_termination = termination.get_peer_termination()
+            if peer_termination is not None and peer_termination.interface.device in devices:
+                graph.edge(termination.interface.device.name, peer_termination.interface.device.name, color='blue')
 
         return graph.pipe(format=img_format)
 
@@ -384,7 +394,7 @@ class ImageAttachment(models.Model):
     """
     An uploaded image which is associated with an object.
     """
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     parent = GenericForeignKey('content_type', 'object_id')
     image = models.ImageField(upload_to=image_upload, height_field='image_height', width_field='image_width')

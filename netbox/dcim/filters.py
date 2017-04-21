@@ -8,9 +8,9 @@ from tenancy.models import Tenant
 from utilities.filters import NullableModelMultipleChoiceFilter, NumericInFilter
 from .models import (
     ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
-    DeviceBayTemplate, DeviceRole, DeviceType, IFACE_FF_LAG, Interface, InterfaceTemplate, Manufacturer, InventoryItem,
-    Platform, PowerOutlet, PowerOutletTemplate, PowerPort, PowerPortTemplate, Rack, RackGroup, RackReservation,
-    RackRole, Region, Site, VIRTUAL_IFACE_TYPES,
+    DeviceBayTemplate, DeviceRole, DeviceType, IFACE_FF_LAG, Interface, InterfaceConnection, InterfaceTemplate,
+    Manufacturer, InventoryItem, Platform, PowerOutlet, PowerOutletTemplate, PowerPort, PowerPortTemplate, Rack,
+    RackGroup, RackReservation, RackRole, Region, Site, VIRTUAL_IFACE_TYPES,
 )
 
 
@@ -148,6 +148,33 @@ class RackFilter(CustomFieldFilterSet, django_filters.FilterSet):
 
 
 class RackReservationFilter(django_filters.FilterSet):
+    id__in = NumericInFilter(name='id', lookup_expr='in')
+    q = django_filters.CharFilter(
+        method='search',
+        label='Search',
+    )
+    site_id = django_filters.ModelMultipleChoiceFilter(
+        name='rack__site',
+        queryset=Site.objects.all(),
+        label='Site (ID)',
+    )
+    site = django_filters.ModelMultipleChoiceFilter(
+        name='rack__site__slug',
+        queryset=Site.objects.all(),
+        to_field_name='slug',
+        label='Site (slug)',
+    )
+    group_id = NullableModelMultipleChoiceFilter(
+        name='rack__group',
+        queryset=RackGroup.objects.all(),
+        label='Group (ID)',
+    )
+    group = NullableModelMultipleChoiceFilter(
+        name='rack__group',
+        queryset=RackGroup.objects.all(),
+        to_field_name='slug',
+        label='Group',
+    )
     rack_id = django_filters.ModelMultipleChoiceFilter(
         name='rack',
         queryset=Rack.objects.all(),
@@ -157,6 +184,16 @@ class RackReservationFilter(django_filters.FilterSet):
     class Meta:
         model = RackReservation
         fields = ['rack', 'user']
+
+    def search(self, queryset, name, value):
+        if not value.strip():
+            return queryset
+        return queryset.filter(
+            Q(rack__name__icontains=value) |
+            Q(rack__facility_id__icontains=value) |
+            Q(user__username__icontains=value) |
+            Q(description__icontains=value)
+        )
 
 
 class DeviceTypeFilter(CustomFieldFilterSet, django_filters.FilterSet):
@@ -401,7 +438,7 @@ class DeviceComponentFilterSet(django_filters.FilterSet):
         label='Device (ID)',
     )
     device = django_filters.ModelMultipleChoiceFilter(
-        name='device',
+        name='device__name',
         queryset=Device.objects.all(),
         to_field_name='name',
         label='Device (name)',
@@ -494,6 +531,10 @@ class ConsoleConnectionFilter(django_filters.FilterSet):
         label='Device',
     )
 
+    class Meta:
+        model = ConsolePort
+        fields = ['name', 'connection_status']
+
     def filter_site(self, queryset, name, value):
         if not value.strip():
             return queryset
@@ -518,6 +559,10 @@ class PowerConnectionFilter(django_filters.FilterSet):
         label='Device',
     )
 
+    class Meta:
+        model = PowerPort
+        fields = ['name', 'connection_status']
+
     def filter_site(self, queryset, name, value):
         if not value.strip():
             return queryset
@@ -541,6 +586,10 @@ class InterfaceConnectionFilter(django_filters.FilterSet):
         method='filter_device',
         label='Device',
     )
+
+    class Meta:
+        model = InterfaceConnection
+        fields = ['connection_status']
 
     def filter_site(self, queryset, name, value):
         if not value.strip():

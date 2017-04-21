@@ -58,6 +58,7 @@
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Racks <span class="caret"></span></a>
                         <ul class="dropdown-menu">
                             <li><a href="{% url 'dcim:rack_list' %}"><i class="fa fa-search" aria-hidden="true"></i> Racks</a></li>
+                            <li><a href="{% url 'dcim:rack_elevation_list' %}"><i class="fa fa-bars" aria-hidden="true"></i> Rack Elevations</a></li>
                             {% if perms.dcim.add_rack %}
                                 <li><a href="{% url 'dcim:rack_add' %}"><i class="fa fa-plus" aria-hidden="true"></i> Add a Rack</a></li>
                                 <li><a href="{% url 'dcim:rack_import' %}"><i class="fa fa-download" aria-hidden="true"></i> Import Racks</a></li>
@@ -72,6 +73,8 @@
                             {% if perms.dcim.add_rackrole %}
                                 <li><a href="{% url 'dcim:rackrole_add' %}"><i class="fa fa-plus" aria-hidden="true"></i> Add a Rack Role</a></li>
                             {% endif %}
+                            <li class="divider"></li>
+                            <li><a href="{% url 'dcim:rackreservation_list' %}"><i class="fa fa-search" aria-hidden="true"></i> Rack Reservations</a></li>
                         </ul>
                     </li>
                     <li class="dropdown{% if request.path|startswith:'/alphalink/vresources' %} active{% endif %}">
@@ -281,10 +284,10 @@
             </div>
         </div>
     </nav>
-	<div class="container wrapper">
+    <div class="container wrapper">
         {% if settings.BANNER_TOP %}
             <div class="alert alert-info text-center" role="alert">
-				{{ settings.BANNER_TOP|safe }}
+                {{ settings.BANNER_TOP|safe }}
             </div>
         {% endif %}
         {% if settings.MAINTENANCE_MODE %}
@@ -293,24 +296,24 @@
                 <p>NetBox is currently in maintenance mode. Functionality may be limited.</p>
             </div>
         {% endif %}
-	    {% for message in messages %}
-	    	<div class="alert alert-{{ message.tags }} alert-dismissable" role="alert">
-	    		<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-	    			<span aria-hidden="true">&times;</span>
-	    		</button>
-	    		{{ message|safe }}
-	    	</div>
-	    {% endfor %}
-		{% block content %}{% endblock %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissable" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                {{ message }}
+            </div>
+        {% endfor %}
+        {% block content %}{% endblock %}
         <div class="push"></div>
- 		{% if settings.BANNER_BOTTOM %}
-        	<div class="alert alert-info text-center banner-bottom" role="alert">
+         {% if settings.BANNER_BOTTOM %}
+            <div class="alert alert-info text-center banner-bottom" role="alert">
                  {{ settings.BANNER_BOTTOM|safe }}
             </div>
         {% endif %}
-	</div>
-	<footer class="footer">
-		<div class="container">
+    </div>
+    <footer class="footer">
+        <div class="container">
             <div class="row">
                 <div class="col-xs-4">
                     <p class="text-muted">{{ settings.HOSTNAME }} (v{{ settings.VERSION }})</p>
@@ -321,14 +324,14 @@
                 <div class="col-xs-4 text-right">
                     <p class="text-muted">
                         <i class="fa fa-fw fa-book text-primary"></i> <a href="http://netbox.readthedocs.io/" target="_blank">Docs</a> &middot;
-                        <i class="fa fa-fw fa-cloud text-primary"></i> <a href="{% url 'django.swagger.base.view' %}">API</a> &middot;
+                        <i class="fa fa-fw fa-cloud text-primary"></i> <a href="{% url 'api_docs' %}">API</a> &middot;
                         <i class="fa fa-fw fa-code text-primary"></i> <a href="https://github.com/digitalocean/netbox">Code</a> &middot;
                         <i class="fa fa-fw fa-support text-primary"></i> <a href="https://github.com/digitalocean/netbox/wiki">Help</a>
                     </p>
                 </div>
             </div>
-		</div>
-	</footer>
+        </div>
+    </footer>
 <script type="text/javascript">
     var netbox_api_path = "/{{ settings.BASE_PATH }}api/";
 </script>

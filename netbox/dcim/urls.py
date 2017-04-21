@@ -8,6 +8,7 @@ from .models import Device, Rack, Site
 from . import views
 
 
+app_name = 'dcim'
 urlpatterns = [
 
     # Regions
@@ -39,11 +40,14 @@ urlpatterns = [
     url(r'^rack-roles/(?P<pk>\d+)/edit/$', views.RackRoleEditView.as_view(), name='rackrole_edit'),
 
     # Rack reservations
+    url(r'^rack-reservations/$', views.RackReservationListView.as_view(), name='rackreservation_list'),
+    url(r'^rack-reservations/delete/$', views.RackReservationBulkDeleteView.as_view(), name='rackreservation_bulk_delete'),
     url(r'^rack-reservations/(?P<pk>\d+)/edit/$', views.RackReservationEditView.as_view(), name='rackreservation_edit'),
     url(r'^rack-reservations/(?P<pk>\d+)/delete/$', views.RackReservationDeleteView.as_view(), name='rackreservation_delete'),
 
     # Racks
     url(r'^racks/$', views.RackListView.as_view(), name='rack_list'),
+    url(r'^rack-elevations/$', views.RackElevationListView.as_view(), name='rack_elevation_list'),
     url(r'^racks/add/$', views.RackEditView.as_view(), name='rack_add'),
     url(r'^racks/import/$', views.RackBulkImportView.as_view(), name='rack_import'),
     url(r'^racks/edit/$', views.RackBulkEditView.as_view(), name='rack_bulk_edit'),
@@ -118,7 +122,6 @@ urlpatterns = [
     url(r'^devices/(?P<pk>\d+)/delete/$', views.DeviceDeleteView.as_view(), name='device_delete'),
     url(r'^devices/(?P<pk>\d+)/inventory/$', views.device_inventory, name='device_inventory'),
     url(r'^devices/(?P<pk>\d+)/lldp-neighbors/$', views.device_lldp_neighbors, name='device_lldp_neighbors'),
-    url(r'^devices/(?P<pk>\d+)/ip-addresses/assign/$', views.ipaddress_assign, name='ipaddress_assign'),
     url(r'^devices/(?P<pk>\d+)/add-secret/$', secret_add, name='device_addsecret'),
     url(r'^devices/(?P<device>\d+)/services/assign/$', ServiceEditView.as_view(), name='service_assign'),
     url(r'^devices/(?P<object_id>\d+)/images/add/$', ImageAttachmentEditView.as_view(), name='device_add_image', kwargs={'model': Device}),
