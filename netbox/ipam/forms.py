@@ -236,7 +236,6 @@ class PrefixFromCSVForm(forms.ModelForm):
                     self.add_error('vlan_vid', "Invalid global VLAN ID ({}).".format(vlan_vid))
             except VLAN.MultipleObjectsReturned:
                 self.add_error('vlan_vid', "Multiple VLANs found ({} - VID {})".format(site, vlan_vid))
-            self.instance.vlan = vlan
 
     def save(self, *args, **kwargs):
 
@@ -316,7 +315,7 @@ class IPAddressForm(BootstrapMixin, ReturnURLForm, CustomFieldForm):
     interface_rack = forms.ModelChoiceField(
         queryset=Rack.objects.all(), required=False, label='Rack', widget=APISelect(
             api_url='/api/dcim/racks/?site_id={{interface_site}}', display_field='display_name',
-            attrs={'filter-for': 'interface_device'}
+            attrs={'filter-for': 'interface_device', 'nullable': 'true'}
         )
     )
     interface_device = forms.ModelChoiceField(
@@ -418,71 +417,15 @@ class IPAddressForm(BootstrapMixin, ReturnURLForm, CustomFieldForm):
                 self.fields['nat_inside'].choices = []
 
 
-class IPAddressBulkAddForm(BootstrapMixin, forms.Form):
-    address = ExpandableIPAddressField()
+class IPAddressBulkAddForm(BootstrapMixin, CustomFieldForm):
+    address_pattern = ExpandableIPAddressField(label='Address Pattern')
     vrf = forms.ModelChoiceField(queryset=VRF.objects.all(), required=False, label='VRF', empty_label='Global')
-    tenant = forms.ModelChoiceField(queryset=Tenant.objects.all(), required=False)
-    status = forms.ChoiceField(choices=IPADDRESS_STATUS_CHOICES)
-    description = forms.CharField(max_length=100, required=False)
 
+    pattern_map = ('address_pattern', 'address')
 
-class IPAddressAssignForm(BootstrapMixin, forms.Form):
-    site = forms.ModelChoiceField(
-        queryset=Site.objects.all(),
-        label='Site',
-        required=False,
-        widget=forms.Select(
-            attrs={'filter-for': 'rack'}
-        )
-    )
-    rack = forms.ModelChoiceField(
-        queryset=Rack.objects.all(),
-        label='Rack',
-        required=False,
-        widget=APISelect(
-            api_url='/api/dcim/racks/?site_id={{site}}',
-            display_field='display_name',
-            attrs={'filter-for': 'device', 'nullable': 'true'}
-        )
-    )
-    device = forms.ModelChoiceField(
-        queryset=Device.objects.all(),
-        label='Device',
-        required=False,
-        widget=APISelect(
-            api_url='/api/dcim/devices/?site_id={{site}}&rack_id={{rack}}',
-            display_field='display_name',
-            attrs={'filter-for': 'interface'}
-        )
-    )
-    livesearch = forms.CharField(
-        required=False,
-        label='Device',
-        widget=Livesearch(
-            query_key='q',
-            query_url='dcim-api:device-list',
-            field_to_update='device'
-        )
-    )
-    interface = forms.ModelChoiceField(
-        queryset=Interface.objects.all(),
-        label='Interface',
-        widget=APISelect(
-            api_url='/api/dcim/interfaces/?device_id={{device}}'
-        )
-    )
-    set_as_primary = forms.BooleanField(
-        label='Set as primary IP for device',
-        required=False
-    )
-
-    def __init__(self, *args, **kwargs):
-
-        super(IPAddressAssignForm, self).__init__(*args, **kwargs)
-
-        self.fields['rack'].choices = []
-        self.fields['device'].choices = []
-        self.fields['interface'].choices = []
+    class Meta:
+        model = IPAddress
+        fields = ['address_pattern', 'vrf', 'tenant', 'status', 'description']
 
 
 class IPAddressFromCSVForm(forms.ModelForm):

@@ -15,16 +15,26 @@ if [ "$(whoami)" = "root" ]; then
 	PREFIX=""
 fi
 
+# Delete stale bytecode
+COMMAND="${PREFIX}find . -name \"*.pyc\" -delete"
+echo "Cleaning up stale Python bytecode ($COMMAND)..."
+#eval $COMMAND
+
+# Fall back to pip3 if pip is missing
+PIP="pip"
+type $PIP >/dev/null 2>&1 || PIP="pip3"
+
 # Install any new Python packages
-COMMAND="${PREFIX}pip install -r requirements.txt --upgrade"
+COMMAND="${PREFIX}${PIP} install -r requirements.txt --upgrade"
 echo "Updating required Python packages ($COMMAND)..."
 eval $COMMAND
 
 # Apply any database migrations
-./netbox/manage.py migrate
+COMMAND="./netbox/manage.py migrate"
+echo "Updating required Python packages ($COMMAND)..."
+eval $COMMAND
 
 # Collect static files
-./netbox/manage.py collectstatic --noinput
-
-# Delete old bytecode
-find . -name "*.pyc" -delete
+COMMAND="./netbox/manage.py collectstatic --no-input"
+echo "Collecting static files ($COMMAND)..."
+eval $COMMAND
