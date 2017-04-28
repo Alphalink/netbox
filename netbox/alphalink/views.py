@@ -47,7 +47,7 @@ class ClusterListView(ObjectListView):
 
 def cluster(request, slug):
 
-    resource_device_type = get_object_or_404(DeviceType.objects.filter(model="VM"))
+    resource_device_type = get_object_or_404(DeviceType.objects.filter(model="VM Qemu/KVM"))
 
     cluster = get_object_or_404(Cluster.objects.all(), slug=slug)
     hypervisors = Device.objects.filter(cluster=cluster).exclude(device_type=resource_device_type)
