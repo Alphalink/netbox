@@ -13,6 +13,8 @@ from django.template import Template, Context
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.safestring import mark_safe
 
+from utilities.utils import foreground_color
+
 
 CUSTOMFIELD_MODELS = (
     'site', 'rack', 'devicetype', 'device',                 # DCIM
@@ -316,7 +318,7 @@ class TopologyMap(models.Model):
     def render(self, img_format='png'):
 
         from circuits.models import CircuitTermination
-        from dcim.models import Device, InterfaceConnection
+        from dcim.models import CONNECTION_STATUS_CONNECTED, Device, InterfaceConnection
 
         # Construct the graph
         graph = graphviz.Graph()
@@ -336,8 +338,9 @@ class TopologyMap(models.Model):
             for query in device_set.split(';'):  # Split regexes on semicolons
                 devices += Device.objects.filter(name__regex=query).select_related('device_role')
             for d in devices:
-                fillcolor = '#{}'.format(d.device_role.color)
-                subgraph.node(d.name, style='filled', fillcolor=fillcolor)
+                bg_color = '#{}'.format(d.device_role.color)
+                fg_color = '#{}'.format(foreground_color(d.device_role.color))
+                subgraph.node(d.name, style='filled', fillcolor=bg_color, fontcolor=fg_color, fontname='sans')
 
             # Add an invisible connection to each successive device in a set to enforce horizontal order
             for j in range(0, len(devices) - 1):
@@ -357,7 +360,8 @@ class TopologyMap(models.Model):
             interface_a__device__in=devices, interface_b__device__in=devices
         )
         for c in connections:
-            graph.edge(c.interface_a.device.name, c.interface_b.device.name)
+            style = 'solid' if c.connection_status == CONNECTION_STATUS_CONNECTED else 'dashed'
+            graph.edge(c.interface_a.device.name, c.interface_b.device.name, style=style)
 
         # Add all circuits to the graph
         for termination in CircuitTermination.objects.filter(term_side='A', interface__device__in=devices):
@@ -383,7 +387,7 @@ def image_upload(instance, filename):
     elif instance.name:
         filename = instance.name
 
-    return '{}{}_{}_{}'.format(path, instance.content_type.name, instance.object_id, filename)
+    return u'{}{}_{}_{}'.format(path, instance.content_type.name, instance.object_id, filename)
 
 
 @python_2_unicode_compatible
@@ -421,6 +425,16 @@ class ImageAttachment(models.Model):
         # Deleting the file erases its name. We restore the image's filename here in case we still need to reference it
         # before the request finishes. (For example, to display a message indicating the ImageAttachment was deleted.)
         self.image.name = _name
+
+    @property
+    def size(self):
+        """
+        Wrapper around `image.size` to suppress an OSError in case the file is inaccessible.
+        """
+        try:
+            return self.image.size
+        except OSError:
+            return None
 
 
 #

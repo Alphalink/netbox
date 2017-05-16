@@ -102,6 +102,7 @@ IFACE_FF_STACKWISE = 5000
 IFACE_FF_STACKWISE_PLUS = 5050
 IFACE_FF_FLEXSTACK = 5100
 IFACE_FF_FLEXSTACK_PLUS = 5150
+IFACE_FF_JUNIPER_VCP = 5200
 # Other
 IFACE_FF_OTHER = 32767
 
@@ -163,6 +164,7 @@ IFACE_FF_CHOICES = [
             [IFACE_FF_STACKWISE_PLUS, 'Cisco StackWise Plus'],
             [IFACE_FF_FLEXSTACK, 'Cisco FlexStack'],
             [IFACE_FF_FLEXSTACK_PLUS, 'Cisco FlexStack Plus'],
+            [IFACE_FF_JUNIPER_VCP, 'Juniper VCP'],
         ]
     ],
     [
@@ -178,12 +180,29 @@ VIRTUAL_IFACE_TYPES = [
     IFACE_FF_LAG,
 ]
 
-STATUS_ACTIVE = True
-STATUS_OFFLINE = False
+STATUS_OFFLINE = 0
+STATUS_ACTIVE = 1
+STATUS_PLANNED = 2
+STATUS_STAGED = 3
+STATUS_FAILED = 4
+STATUS_INVENTORY = 5
 STATUS_CHOICES = [
     [STATUS_ACTIVE, 'Active'],
     [STATUS_OFFLINE, 'Offline'],
+    [STATUS_PLANNED, 'Planned'],
+    [STATUS_STAGED, 'Staged'],
+    [STATUS_FAILED, 'Failed'],
+    [STATUS_INVENTORY, 'Inventory'],
 ]
+
+DEVICE_STATUS_CLASSES = {
+    0: 'warning',
+    1: 'success',
+    2: 'info',
+    3: 'primary',
+    4: 'danger',
+    5: 'default',
+}
 
 CONNECTION_STATUS_PLANNED = False
 CONNECTION_STATUS_CONNECTED = True
@@ -391,7 +410,7 @@ class Rack(CreatedUpdatedModel, CustomFieldModel):
         ]
 
     def __str__(self):
-        return self.display_name
+        return self.display_name or super(Rack, self).__str__()
 
     def get_absolute_url(self):
         return reverse('dcim:rack', args=[self.pk])
@@ -448,7 +467,9 @@ class Rack(CreatedUpdatedModel, CustomFieldModel):
     def display_name(self):
         if self.facility_id:
             return u"{} ({})".format(self.name, self.facility_id)
-        return self.name
+        elif self.name:
+            return self.name
+        return u""
 
     def get_rack_units(self, face=RACK_FACE_FRONT, exclude=None, remove_redundant=False):
         """
@@ -791,13 +812,13 @@ class InterfaceManager(models.Manager):
 
     def order_naturally(self, method=IFACE_ORDERING_POSITION):
         """
-        Naturally order interfaces by their name and numeric position. The sort method must be one of the defined
+        Naturally order interfaces by their type and numeric position. The sort method must be one of the defined
         IFACE_ORDERING_CHOICES (typically indicated by a parent Device's DeviceType).
 
-        To order interfaces naturally, the `name` field is split into five distinct components: leading text (name),
+        To order interfaces naturally, the `name` field is split into six distinct components: leading text (type),
         slot, subslot, position, channel, and virtual circuit:
 
-            {name}{slot}/{subslot}/{position}:{channel}.{vc}
+            {type}{slot}/{subslot}/{position}:{channel}.{vc}
 
         Components absent from the interface name are ignored. For example, an interface named GigabitEthernet0/1 would
         be parsed as follows:
@@ -809,16 +830,17 @@ class InterfaceManager(models.Manager):
             channel = None
             vc = 0
 
-        The chosen sorting method will determine which fields are ordered first in the query.
+        The original `name` field is taken as a whole to serve as a fallback in the event interfaces do not match any of
+        the prescribed fields.
         """
         queryset = self.get_queryset()
         sql_col = '{}.name'.format(queryset.model._meta.db_table)
         ordering = {
-            IFACE_ORDERING_POSITION: ('_slot', '_subslot', '_position', '_channel', '_vc', '_name'),
-            IFACE_ORDERING_NAME: ('_name', '_slot', '_subslot', '_position', '_channel', '_vc'),
+            IFACE_ORDERING_POSITION: ('_slot', '_subslot', '_position', '_channel', '_vc', '_type', 'name'),
+            IFACE_ORDERING_NAME: ('_type', '_slot', '_subslot', '_position', '_channel', '_vc', 'name'),
         }[method]
         return queryset.extra(select={
-            '_name': "SUBSTRING({} FROM '^([^0-9]+)')".format(sql_col),
+            '_type': "SUBSTRING({} FROM '^([^0-9]+)')".format(sql_col),
             '_slot': "CAST(SUBSTRING({} FROM '([0-9]+)\/[0-9]+\/[0-9]+(:[0-9]+)?(\.[0-9]+)?$') AS integer)".format(sql_col),
             '_subslot': "CAST(SUBSTRING({} FROM '([0-9]+)\/[0-9]+(:[0-9]+)?(\.[0-9]+)?$') AS integer)".format(sql_col),
             '_position': "CAST(SUBSTRING({} FROM '([0-9]+)(:[0-9]+)?(\.[0-9]+)?$') AS integer)".format(sql_col),
@@ -933,19 +955,26 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
     platform = models.ForeignKey('Platform', related_name='devices', blank=True, null=True, on_delete=models.SET_NULL)
     name = NullableCharField(max_length=64, blank=True, null=True, unique=True)
     serial = models.CharField(max_length=50, blank=True, verbose_name='Serial number')
-    asset_tag = NullableCharField(max_length=50, blank=True, null=True, unique=True, verbose_name='Asset tag',
-                                  help_text='A unique tag used to identify this device')
+    asset_tag = NullableCharField(
+        max_length=50, blank=True, null=True, unique=True, verbose_name='Asset tag',
+        help_text='A unique tag used to identify this device'
+    )
     site = models.ForeignKey('Site', related_name='devices', on_delete=models.PROTECT)
     rack = models.ForeignKey('Rack', related_name='devices', blank=True, null=True, on_delete=models.PROTECT)
-    position = models.PositiveSmallIntegerField(blank=True, null=True, validators=[MinValueValidator(1)],
-                                                verbose_name='Position (U)',
-                                                help_text='The lowest-numbered unit occupied by the device')
+    position = models.PositiveSmallIntegerField(
+        blank=True, null=True, validators=[MinValueValidator(1)], verbose_name='Position (U)',
+        help_text='The lowest-numbered unit occupied by the device'
+    )
     face = models.PositiveSmallIntegerField(blank=True, null=True, choices=RACK_FACE_CHOICES, verbose_name='Rack face')
-    status = models.BooleanField(choices=STATUS_CHOICES, default=STATUS_ACTIVE, verbose_name='Status')
-    primary_ip4 = models.OneToOneField('ipam.IPAddress', related_name='primary_ip4_for', on_delete=models.SET_NULL,
-                                       blank=True, null=True, verbose_name='Primary IPv4')
-    primary_ip6 = models.OneToOneField('ipam.IPAddress', related_name='primary_ip6_for', on_delete=models.SET_NULL,
-                                       blank=True, null=True, verbose_name='Primary IPv6')
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=STATUS_ACTIVE, verbose_name='Status')
+    primary_ip4 = models.OneToOneField(
+        'ipam.IPAddress', related_name='primary_ip4_for', on_delete=models.SET_NULL, blank=True, null=True,
+        verbose_name='Primary IPv4'
+    )
+    primary_ip6 = models.OneToOneField(
+        'ipam.IPAddress', related_name='primary_ip6_for', on_delete=models.SET_NULL, blank=True, null=True,
+        verbose_name='Primary IPv6'
+    )
     comments = models.TextField(blank=True)
     cluster = models.ForeignKey('alphalink.Cluster', related_name='members', on_delete=models.PROTECT, blank=True, null=True)
     custom_field_values = GenericRelation(CustomFieldValue, content_type_field='obj_type', object_id_field='obj_id')
@@ -958,7 +987,7 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
         unique_together = ['rack', 'position', 'face']
 
     def __str__(self):
-        return self.display_name
+        return self.display_name or super(Device, self).__str__()
 
     def get_absolute_url(self):
         return reverse('dcim:device', args=[self.pk])
@@ -1066,6 +1095,7 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
             self.platform.name if self.platform else None,
             self.serial,
             self.asset_tag,
+            self.get_status_display(),
             self.site.name,
             self.rack.name if self.rack else None,
             self.position,
@@ -1076,12 +1106,9 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
     def display_name(self):
         if self.name:
             return self.name
-        elif self.position:
-            return u"{} ({} U{})".format(self.device_type, self.rack.name, self.position)
-        elif self.rack:
-            return u"{} ({})".format(self.device_type, self.rack.name)
-        else:
-            return u"{} ({})".format(self.device_type, self.site.name)
+        elif hasattr(self, 'device_type'):
+            return u"{}".format(self.device_type)
+        return u""
 
     @property
     def identifier(self):
@@ -1108,6 +1135,9 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
         Return the set of child Devices installed in DeviceBays within this Device.
         """
         return Device.objects.filter(parent_bay__device=self.pk)
+
+    def get_status_class(self):
+        return DEVICE_STATUS_CLASSES[self.status]
 
     def get_rpc_client(self):
         """

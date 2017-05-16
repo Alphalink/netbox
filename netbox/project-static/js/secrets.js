@@ -15,11 +15,15 @@ $(document).ready(function() {
     });
 
     // Adding/editing a secret
-    $('form.requires-session-key').submit(function(event) {
-        if ($('#id_plaintext').val() && document.cookie.indexOf('session_key') == -1) {
-            $('#privkey_modal').modal('show');
-            event.preventDefault();
-        }
+    $('form').submit(function(event) {
+        $(this).find('input.requires-session-key').each(function() {
+            if (this.value && document.cookie.indexOf('session_key') == -1) {
+                console.log('Field ' + this.value + ' requires a session key');
+                $('#privkey_modal').modal('show');
+                event.preventDefault();
+                return false;
+            }
+        });
     });
 
     // Retrieve a session key

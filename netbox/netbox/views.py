@@ -36,7 +36,7 @@ SEARCH_TYPES = {
         'url': 'circuits:provider_list',
     },
     'circuit': {
-        'queryset': Circuit.objects.select_related('type', 'provider', 'tenant'),
+        'queryset': Circuit.objects.select_related('type', 'provider', 'tenant').prefetch_related('terminations__site'),
         'filter': CircuitFilter,
         'table': CircuitSearchTable,
         'url': 'circuits:circuit_list',
@@ -191,7 +191,7 @@ class SearchView(View):
                     results.append({
                         'name': queryset.model._meta.verbose_name_plural,
                         'table': table,
-                        'url': '{}?q={}'.format(reverse(url), form.cleaned_data['q'])
+                        'url': u'{}?q={}'.format(reverse(url), form.cleaned_data['q'])
                     })
 
         return render(request, 'search.html', {

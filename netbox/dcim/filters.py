@@ -9,9 +9,9 @@ from alphalink.models import Cluster
 from utilities.filters import NullableModelMultipleChoiceFilter, NumericInFilter
 from .models import (
     ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
-    DeviceBayTemplate, DeviceRole, DeviceType, IFACE_FF_LAG, Interface, InterfaceConnection, InterfaceTemplate,
-    Manufacturer, InventoryItem, Platform, PowerOutlet, PowerOutletTemplate, PowerPort, PowerPortTemplate, Rack,
-    RackGroup, RackReservation, RackRole, Region, Site, VIRTUAL_IFACE_TYPES,
+    DeviceBayTemplate, DeviceRole, DeviceType, STATUS_CHOICES, IFACE_FF_LAG, Interface, InterfaceConnection,
+    InterfaceTemplate, Manufacturer, InventoryItem, Platform, PowerOutlet, PowerOutletTemplate, PowerPort,
+    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, Region, Site, VIRTUAL_IFACE_TYPES,
 )
 
 
@@ -380,10 +380,6 @@ class DeviceFilter(CustomFieldFilterSet, django_filters.FilterSet):
         to_field_name='slug',
         label='Platform (slug)',
     )
-    status = django_filters.BooleanFilter(
-        name='status',
-        label='Status',
-    )
     is_console_server = django_filters.BooleanFilter(
         name='device_type__is_console_server',
         label='Is a console server',
@@ -399,6 +395,9 @@ class DeviceFilter(CustomFieldFilterSet, django_filters.FilterSet):
     has_primary_ip = django_filters.BooleanFilter(
         method='_has_primary_ip',
         label='Has a primary IP',
+    )
+    status = django_filters.MultipleChoiceFilter(
+        choices=STATUS_CHOICES
     )
 
     class Meta:
