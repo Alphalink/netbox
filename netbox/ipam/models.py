@@ -3,10 +3,10 @@ from netaddr import IPNetwork, cidr_merge
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.expressions import RawSQL
+from django.urls import reverse
 from django.utils.encoding import python_2_unicode_compatible
 
 from dcim.models import Interface
@@ -538,7 +538,7 @@ class VLAN(CreatedUpdatedModel, CustomFieldModel):
         verbose_name_plural = 'VLANs'
 
     def __str__(self):
-        return self.display_name
+        return self.display_name or super(VLAN, self).__str__()
 
     def get_absolute_url(self):
         return reverse('ipam:vlan', args=[self.pk])
@@ -565,7 +565,9 @@ class VLAN(CreatedUpdatedModel, CustomFieldModel):
 
     @property
     def display_name(self):
-        return u'{} ({})'.format(self.vid, self.name)
+        if self.vid and self.name:
+            return u"{} ({})".format(self.vid, self.name)
+        return None
 
     def get_status_class(self):
         return STATUS_CHOICE_CLASSES[self.status]

@@ -45,11 +45,19 @@ def gfm(value):
 
 
 @register.filter()
-def startswith(value, arg):
+def contains(value, arg):
     """
-    Test whether a string starts with the given argument
+    Test whether a value contains any of a given set of strings. `arg` should be a comma-separated list of strings.
     """
-    return str(value).startswith(arg)
+    return any(s in value for s in arg.split(','))
+
+
+@register.filter()
+def bettertitle(value):
+    """
+    Alternative to the builtin title(); uppercases words without replacing letters that are already uppercase.
+    """
+    return ' '.join([w[0].upper() + w[1:] for w in value.split()])
 
 
 #
@@ -57,30 +65,17 @@ def startswith(value, arg):
 #
 
 @register.simple_tag()
-def querystring_toggle(request, multi=True, page_key='page', **kwargs):
+def querystring(request, **kwargs):
     """
-    Add or remove a parameter in the HTTP GET query string
+    Append or update the page number in a querystring.
     """
-    new_querydict = request.GET.copy()
-
-    # Remove page number from querystring
-    try:
-        new_querydict.pop(page_key)
-    except KeyError:
-        pass
-
-    # Add/toggle parameters
+    querydict = request.GET.copy()
     for k, v in kwargs.items():
-        values = new_querydict.getlist(k)
-        if k in new_querydict and v in values:
-            values.remove(v)
-            new_querydict.setlist(k, values)
-        elif not multi:
-            new_querydict[k] = v
-        else:
-            new_querydict.update({k: v})
-
-    querystring = new_querydict.urlencode()
+        if v is not None:
+            querydict[k] = v
+        elif k in querydict:
+            querydict.pop(k)
+    querystring = querydict.urlencode()
     if querystring:
         return '?' + querystring
     else:

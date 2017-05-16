@@ -1,4 +1,4 @@
-<tr{% if csp.connected_console and not csp.connected_console.connection_status %} class="info"{% endif %}>
+<tr class="consoleserverport{% if csp.connected_console and not csp.connected_console.connection_status %} info{% endif %}">
     {% if selectable and perms.dcim.change_consoleserverport or perms.dcim.delete_consoleserverport %}
         <td class="pk">
             <input name="pk" type="checkbox" value="{{ csp.pk }}" />
@@ -7,6 +7,7 @@
     <td>
         <i class="fa fa-fw fa-keyboard-o"></i> {{ csp.name }}
     </td>
+    <td></td>
     {% if csp.connected_console %}
         <td>
             <a href="{% url 'dcim:device' pk=csp.connected_console.device.pk %}">{{ csp.connected_console.device }}</a>
@@ -19,7 +20,7 @@
             <span class="text-muted">Not connected</span>
         </td>
     {% endif %}
-    <td class="text-right">
+    <td colspan="2" class="text-right">
         {% if perms.dcim.change_consoleserverport %}
             {% if csp.connected_console %}
                 {% if csp.connected_console.connection_status %}
@@ -32,11 +33,11 @@
                     </a>
                 {% endif %}
                 <a href="{% url 'dcim:consoleserverport_disconnect' pk=csp.pk %}" class="btn btn-danger btn-xs">
-                    <i class="glyphicon glyphicon-remove" aria-hidden="true" title="Delete connection"></i>
+                    <i class="glyphicon glyphicon-resize-full" aria-hidden="true" title="Delete connection"></i>
                 </a>
             {% else %}
                 <a href="{% url 'dcim:consoleserverport_connect' pk=csp.pk %}" class="btn btn-success btn-xs">
-                    <i class="glyphicon glyphicon-plus" aria-hidden="true" title="Connect"></i>
+                    <i class="glyphicon glyphicon-resize-small" aria-hidden="true" title="Connect"></i>
                 </a>
             {% endif %}
             <a href="{% url 'dcim:consoleserverport_edit' pk=csp.pk %}" class="btn btn-info btn-xs">

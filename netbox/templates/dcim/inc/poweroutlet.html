@@ -1,4 +1,4 @@
-<tr{% if po.connected_port and not po.connected_port.connection_status %} class="info"{% endif %}>
+<tr class="poweroutlet{% if po.connected_port and not po.connected_port.connection_status %} info{% endif %}">
     {% if selectable and perms.dcim.change_poweroutlet or perms.dcim.delete_poweroutlet %}
         <td class="pk">
             <input name="pk" type="checkbox" value="{{ po.pk }}" />
@@ -7,6 +7,7 @@
     <td>
         <i class="fa fa-fw fa-bolt"></i> {{ po.name }}
     </td>
+    <td></td>
     {% if po.connected_port %}
         <td>
             <a href="{% url 'dcim:device' pk=po.connected_port.device.pk %}">{{ po.connected_port.device }}</a>
@@ -19,7 +20,7 @@
             <span class="text-muted">Not connected</span>
         </td>
     {% endif %}
-    <td class="text-right">
+    <td colspan="2" class="text-right">
         {% if perms.dcim.change_poweroutlet %}
             {% if po.connected_port %}
                 {% if po.connected_port.connection_status %}
@@ -32,11 +33,11 @@
                     </a>
                 {% endif %}
                 <a href="{% url 'dcim:poweroutlet_disconnect' pk=po.pk %}" class="btn btn-danger btn-xs">
-                    <i class="glyphicon glyphicon-remove" aria-hidden="true" title="Delete connection"></i>
+                    <i class="glyphicon glyphicon-resize-full" aria-hidden="true" title="Delete connection"></i>
                 </a>
             {% else %}
                 <a href="{% url 'dcim:poweroutlet_connect' pk=po.pk %}" class="btn btn-success btn-xs">
-                    <i class="glyphicon glyphicon-plus" aria-hidden="true" title="Connect"></i>
+                    <i class="glyphicon glyphicon-resize-small" aria-hidden="true" title="Connect"></i>
                 </a>
             {% endif %}
             <a href="{% url 'dcim:poweroutlet_edit' pk=po.pk %}" class="btn btn-info btn-xs">

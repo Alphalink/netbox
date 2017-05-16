@@ -5,17 +5,18 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
 from django.db import transaction, IntegrityError
 from django.db.models import ProtectedError
 from django.forms import CharField, ModelMultipleChoiceField, MultipleHiddenInput, TypedChoiceField
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template import TemplateSyntaxError
+from django.urls import reverse
+from django.utils.html import escape
 from django.utils.http import is_safe_url
+from django.utils.safestring import mark_safe
 from django.views.generic import View
 
-from extras.forms import CustomFieldForm
 from extras.models import CustomField, CustomFieldValue, ExportTemplate, UserAction
 
 from .error_handlers import handle_protectederror
@@ -37,6 +38,23 @@ class CustomFieldQueryset:
             values_dict = {cfv.field_id: cfv.value for cfv in obj.custom_field_values.all()}
             obj.custom_fields = OrderedDict([(field, values_dict.get(field.pk)) for field in self.custom_fields])
             yield obj
+
+
+class GetReturnURLMixin(object):
+    """
+    Provides logic for determining where a user should be redirected after processing a form.
+    """
+    default_return_url = None
+
+    def get_return_url(self, request, obj):
+        query_param = request.GET.get('return_url')
+        if query_param and is_safe_url(url=query_param, host=request.get_host()):
+            return query_param
+        elif obj.pk and hasattr(obj, 'get_absolute_url'):
+            return obj.get_absolute_url()
+        elif self.default_return_url is not None:
+            return reverse(self.default_return_url)
+        return reverse('home')
 
 
 class ObjectListView(View):
@@ -128,21 +146,18 @@ class ObjectListView(View):
         return {}
 
 
-class ObjectEditView(View):
+class ObjectEditView(GetReturnURLMixin, View):
     """
     Create or edit a single object.
 
     model: The model of the object being edited
     form_class: The form used to create or edit the object
-    fields_initial: A set of fields that will be prepopulated in the form from the request parameters
     template_name: The name of the template
     default_return_url: The name of the URL used to display a list of this object type
     """
     model = None
     form_class = None
-    fields_initial = []
     template_name = 'utilities/obj_edit.html'
-    default_return_url = 'home'
 
     def get_object(self, kwargs):
         # Look up object by slug or PK. Return None if neither was provided.
@@ -157,47 +172,38 @@ class ObjectEditView(View):
         # given some parameter from the request URL.
         return obj
 
-    def get_return_url(self, obj):
-        # Determine where to redirect the user after updating an object (or aborting an update).
-        if obj.pk and hasattr(obj, 'get_absolute_url'):
-            return obj.get_absolute_url()
-        return reverse(self.default_return_url)
-
     def get(self, request, *args, **kwargs):
 
         obj = self.get_object(kwargs)
         obj = self.alter_obj(obj, request, args, kwargs)
-        initial_data = {k: request.GET[k] for k in self.fields_initial if k in request.GET}
+        # Parse initial data manually to avoid setting field values as lists
+        initial_data = {k: request.GET[k] for k in request.GET}
         form = self.form_class(instance=obj, initial=initial_data)
 
         return render(request, self.template_name, {
             'obj': obj,
             'obj_type': self.model._meta.verbose_name,
             'form': form,
-            'return_url': self.get_return_url(obj),
+            'return_url': self.get_return_url(request, obj),
         })
 
     def post(self, request, *args, **kwargs):
 
         obj = self.get_object(kwargs)
         obj = self.alter_obj(obj, request, args, kwargs)
-        form = self.form_class(request.POST, instance=obj)
+        form = self.form_class(request.POST, request.FILES, instance=obj)
 
         if form.is_valid():
-            obj = form.save(commit=False)
-            obj_created = not obj.pk
-            obj.save()
-            form.save_m2m()
-            if isinstance(form, CustomFieldForm):
-                form.save_custom_fields()
+            obj_created = not form.instance.pk
+            obj = form.save()
 
             msg = u'Created ' if obj_created else u'Modified '
             msg += self.model._meta.verbose_name
             if hasattr(obj, 'get_absolute_url'):
-                msg = u'{} <a href="{}">{}</a>'.format(msg, obj.get_absolute_url(), obj)
+                msg = u'{} <a href="{}">{}</a>'.format(msg, obj.get_absolute_url(), escape(obj))
             else:
-                msg = u'{} {}'.format(msg, obj)
-            messages.success(request, msg)
+                msg = u'{} {}'.format(msg, escape(obj))
+            messages.success(request, mark_safe(msg))
             if obj_created:
                 UserAction.objects.log_create(request.user, obj, msg)
             else:
@@ -205,17 +211,22 @@ class ObjectEditView(View):
 
             if '_addanother' in request.POST:
                 return redirect(request.path)
-            return redirect(self.get_return_url(obj))
+
+            return_url = form.cleaned_data.get('return_url')
+            if return_url is not None and is_safe_url(url=return_url, host=request.get_host()):
+                return redirect(return_url)
+            else:
+                return redirect(self.get_return_url(request, obj))
 
         return render(request, self.template_name, {
             'obj': obj,
             'obj_type': self.model._meta.verbose_name,
             'form': form,
-            'return_url': self.get_return_url(obj),
+            'return_url': self.get_return_url(request, obj),
         })
 
 
-class ObjectDeleteView(View):
+class ObjectDeleteView(GetReturnURLMixin, View):
     """
     Delete a single object.
 
@@ -225,7 +236,6 @@ class ObjectDeleteView(View):
     """
     model = None
     template_name = 'utilities/obj_delete.html'
-    default_return_url = 'home'
 
     def get_object(self, kwargs):
         # Look up object by slug if one has been provided. Otherwise, use PK.
@@ -234,24 +244,16 @@ class ObjectDeleteView(View):
         else:
             return get_object_or_404(self.model, pk=kwargs['pk'])
 
-    def get_return_url(self, obj):
-        if obj.pk and hasattr(obj, 'get_absolute_url'):
-            return obj.get_absolute_url()
-        return reverse(self.default_return_url)
-
     def get(self, request, **kwargs):
 
         obj = self.get_object(kwargs)
-        initial_data = {
-            'return_url': request.GET.get('return_url'),
-        }
-        form = ConfirmationForm(initial=initial_data)
+        form = ConfirmationForm(initial=request.GET)
 
         return render(request, self.template_name, {
             'obj': obj,
             'form': form,
             'obj_type': self.model._meta.verbose_name,
-            'return_url': request.GET.get('return_url') or self.get_return_url(obj),
+            'return_url': self.get_return_url(request, obj),
         })
 
     def post(self, request, **kwargs):
@@ -270,17 +272,17 @@ class ObjectDeleteView(View):
             messages.success(request, msg)
             UserAction.objects.log_delete(request.user, obj, msg)
 
-            return_url = form.cleaned_data['return_url']
-            if return_url and is_safe_url(url=return_url, host=request.get_host()):
+            return_url = form.cleaned_data.get('return_url')
+            if return_url is not None and is_safe_url(url=return_url, host=request.get_host()):
                 return redirect(return_url)
             else:
-                return redirect(self.get_return_url(obj))
+                return redirect(self.get_return_url(request, obj))
 
         return render(request, self.template_name, {
             'obj': obj,
             'form': form,
             'obj_type': self.model._meta.verbose_name,
-            'return_url': request.GET.get('return_url') or self.get_return_url(obj),
+            'return_url': self.get_return_url(request, obj),
         })
 
 
@@ -288,60 +290,79 @@ class BulkAddView(View):
     """
     Create new objects in bulk.
 
-    form: Form class
-    model: The model of the objects being created
+    pattern_form: Form class which provides the `pattern` field
+    model_form: The ModelForm used to create individual objects
     template_name: The name of the template
     default_return_url: Name of the URL to which the user is redirected after creating the objects
     """
-    form = None
-    model = None
+    pattern_form = None
+    model_form = None
+    pattern_target = ''
     template_name = None
     default_return_url = 'home'
 
     def get(self, request):
 
-        form = self.form()
+        pattern_form = self.pattern_form()
+        model_form = self.model_form()
 
         return render(request, self.template_name, {
-            'obj_type': self.model._meta.verbose_name,
-            'form': form,
+            'obj_type': self.model_form._meta.model._meta.verbose_name,
+            'pattern_form': pattern_form,
+            'model_form': model_form,
             'return_url': reverse(self.default_return_url),
         })
 
     def post(self, request):
 
-        form = self.form(request.POST)
-        if form.is_valid():
+        model = self.model_form._meta.model
+        pattern_form = self.pattern_form(request.POST)
+        model_form = self.model_form(request.POST)
 
-            # The first field will be used as the pattern
-            field_names = list(form.fields.keys())
-            pattern_field = field_names[0]
-            pattern = form.cleaned_data[pattern_field]
+        if pattern_form.is_valid():
 
-            # All other fields will be copied as object attributes
-            kwargs = {k: form.cleaned_data[k] for k in field_names[1:]}
-
+            pattern = pattern_form.cleaned_data['pattern']
             new_objs = []
+
             try:
                 with transaction.atomic():
-                    for value in pattern:
-                        obj = self.model(**kwargs)
-                        setattr(obj, pattern_field, value)
-                        obj.full_clean()
-                        obj.save()
-                        new_objs.append(obj)
-            except ValidationError as e:
-                form.add_error(None, e)
 
-            if not form.errors:
-                messages.success(request, u"Added {} {}.".format(len(new_objs), self.model._meta.verbose_name_plural))
-                if '_addanother' in request.POST:
-                    return redirect(request.path)
-                return redirect(self.default_return_url)
+                    # Create objects from the expanded. Abort the transaction on the first validation error.
+                    for value in pattern:
+
+                        # Reinstantiate the model form each time to avoid overwriting the same instance. Use a mutable
+                        # copy of the POST QueryDict so that we can update the target field value.
+                        model_form = self.model_form(request.POST.copy())
+                        model_form.data[self.pattern_target] = value
+
+                        # Validate each new object independently.
+                        if model_form.is_valid():
+                            obj = model_form.save()
+                            new_objs.append(obj)
+                        else:
+                            # Copy any errors on the pattern target field to the pattern form.
+                            errors = model_form.errors.as_data()
+                            if errors.get(self.pattern_target):
+                                pattern_form.add_error('pattern', errors[self.pattern_target])
+                            # Raise an IntegrityError to break the for loop and abort the transaction.
+                            raise IntegrityError()
+
+                    # If we make it to this point, validation has succeeded on all new objects.
+                    msg = u"Added {} {}".format(len(new_objs), model._meta.verbose_name_plural)
+                    messages.success(request, msg)
+                    UserAction.objects.log_bulk_create(request.user, ContentType.objects.get_for_model(model), msg)
+
+                    if '_addanother' in request.POST:
+                        return redirect(request.path)
+                    return redirect(self.default_return_url)
+
+            except IntegrityError:
+                pass
 
         return render(request, self.template_name, {
-            'form': form,
-            'obj_type': self.model._meta.verbose_name,
+            'pattern_form': pattern_form,
+            'model_form': model_form,
+            'obj_type': model._meta.verbose_name,
             'return_url': reverse(self.default_return_url),
         })
 
@@ -386,6 +407,7 @@ class BulkImportView(View):
 
                 return render(request, "import_success.html", {
                     'table': obj_table,
+                    'return_url': self.default_return_url,
                 })
 
             except IntegrityError as e:
@@ -409,7 +431,7 @@ class BulkEditView(View):
     filter: FilterSet to apply when deleting by QuerySet
     form: The form class used to edit objects in bulk
     template_name: The name of the template
-    default_return_url: Name of the URL to which the user is redirected after editing the objects (can be overriden by
+    default_return_url: Name of the URL to which the user is redirected after editing the objects (can be overridden by
                         POSTing return_url)
     """
     cls = None
@@ -461,7 +483,7 @@ class BulkEditView(View):
                             fields_to_update[field] = ''
                         else:
                             fields_to_update[field] = None
-                    elif form.cleaned_data[field]:
+                    elif form.cleaned_data[field] not in (None, ''):
                         fields_to_update[field] = form.cleaned_data[field]
                 updated_count = self.cls.objects.filter(pk__in=pk_list).update(**fields_to_update)
 

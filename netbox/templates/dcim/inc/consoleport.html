@@ -1,4 +1,4 @@
-<tr{% if cp.cs_port and not cp.connection_status %} class="info"{% endif %}>
+<tr class="consoleport{% if cp.cs_port and not cp.connection_status %} info{% endif %}">
     {% if selectable and perms.dcim.change_consoleport or perms.dcim.delete_consoleport %}
         <td class="pk">
             <input name="pk" type="checkbox" value="{{ cp.pk }}" />
@@ -20,7 +20,7 @@
             <span class="text-muted">Not connected</span>
         </td>
     {% endif %}
-    <td class="text-right">
+    <td colspan="2" class="text-right">
         {% if perms.dcim.change_consoleport %}
             {% if cp.cs_port %}
                 {% if cp.connection_status %}
@@ -33,11 +33,11 @@
                     </a>
                 {% endif %}
                 <a href="{% url 'dcim:consoleport_disconnect' pk=cp.pk %}" class="btn btn-danger btn-xs">
-                    <i class="glyphicon glyphicon-remove" aria-hidden="true" title="Delete connection"></i>
+                    <i class="glyphicon glyphicon-resize-full" aria-hidden="true" title="Delete connection"></i>
                 </a>
             {% else %}
                 <a href="{% url 'dcim:consoleport_connect' pk=cp.pk %}" class="btn btn-success btn-xs">
-                    <i class="glyphicon glyphicon-plus" aria-hidden="true" title="Connect"></i>
+                    <i class="glyphicon glyphicon-resize-small" aria-hidden="true" title="Connect"></i>
                 </a>
             {% endif %}
             <a href="{% url 'dcim:consoleport_edit' pk=cp.pk %}" class="btn btn-info btn-xs">

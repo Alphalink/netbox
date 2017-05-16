@@ -2,15 +2,12 @@ from django_tables2 import RequestConfig
 import netaddr
 
 from django.conf import settings
-from django.contrib.auth.decorators import permission_required
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.contrib import messages
-from django.core.urlresolvers import reverse
 from django.db.models import Count, Q
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 
 from dcim.models import Device
-from utilities.forms import ConfirmationForm
 from utilities.paginator import EnhancedPaginator
 from utilities.views import (
     BulkAddView, BulkDeleteView, BulkEditView, BulkImportView, ObjectDeleteView, ObjectEditView, ObjectListView,
@@ -244,7 +241,7 @@ class RIREditView(PermissionRequiredMixin, ObjectEditView):
     model = RIR
     form_class = forms.RIRForm
 
-    def get_return_url(self, obj):
+    def get_return_url(self, request, obj):
         return reverse('ipam:rir_list')
 
 
@@ -370,7 +367,7 @@ class RoleEditView(PermissionRequiredMixin, ObjectEditView):
     model = Role
     form_class = forms.RoleForm
 
-    def get_return_url(self, obj):
+    def get_return_url(self, request, obj):
         return reverse('ipam:role_list')
 
 
@@ -464,7 +461,6 @@ class PrefixEditView(PermissionRequiredMixin, ObjectEditView):
     model = Prefix
     form_class = forms.PrefixForm
     template_name = 'ipam/prefix_edit.html'
-    fields_initial = ['vrf', 'tenant', 'site', 'prefix', 'vlan']
     default_return_url = 'ipam:prefix_list'
 
 
@@ -537,7 +533,7 @@ def prefix_ipaddresses(request, pk):
 #
 
 class IPAddressListView(ObjectListView):
-    queryset = IPAddress.objects.select_related('vrf__tenant', 'tenant', 'interface__device')
+    queryset = IPAddress.objects.select_related('vrf__tenant', 'tenant', 'interface__device', 'nat_inside')
     filter = filters.IPAddressFilter
     filter_form = forms.IPAddressFilterForm
     table = tables.IPAddressTable
@@ -572,80 +568,10 @@ def ipaddress(request, pk):
     })
 
 
-@permission_required(['dcim.change_device', 'ipam.change_ipaddress'])
-def ipaddress_assign(request, pk):
-
-    ipaddress = get_object_or_404(IPAddress, pk=pk)
-
-    if request.method == 'POST':
-        form = forms.IPAddressAssignForm(request.POST)
-        if form.is_valid():
-
-            interface = form.cleaned_data['interface']
-            ipaddress.interface = interface
-            ipaddress.save()
-            messages.success(request, u"Assigned IP address {} to interface {}.".format(ipaddress, ipaddress.interface))
-
-            if form.cleaned_data['set_as_primary']:
-                device = interface.device
-                if ipaddress.family == 4:
-                    device.primary_ip4 = ipaddress
-                elif ipaddress.family == 6:
-                    device.primary_ip6 = ipaddress
-                device.save()
-
-            return redirect('ipam:ipaddress', pk=ipaddress.pk)
-        else:
-            assert False, form.errors
-
-    else:
-        form = forms.IPAddressAssignForm()
-
-    return render(request, 'ipam/ipaddress_assign.html', {
-        'ipaddress': ipaddress,
-        'form': form,
-        'return_url': reverse('ipam:ipaddress', kwargs={'pk': ipaddress.pk}),
-    })
-
-
-@permission_required(['dcim.change_device', 'ipam.change_ipaddress'])
-def ipaddress_remove(request, pk):
-
-    ipaddress = get_object_or_404(IPAddress, pk=pk)
-
-    if request.method == 'POST':
-        form = ConfirmationForm(request.POST)
-        if form.is_valid():
-
-            device = ipaddress.interface.device
-            ipaddress.interface = None
-            ipaddress.save()
-            messages.success(request, u"Removed IP address {} from {}.".format(ipaddress, device))
-
-            if device.primary_ip4 == ipaddress.pk:
-                device.primary_ip4 = None
-                device.save()
-            elif device.primary_ip6 == ipaddress.pk:
-                device.primary_ip6 = None
-                device.save()
-
-            return redirect('ipam:ipaddress', pk=ipaddress.pk)
-
-    else:
-        form = ConfirmationForm()
-
-    return render(request, 'ipam/ipaddress_unassign.html', {
-        'ipaddress': ipaddress,
-        'form': form,
-        'return_url': reverse('ipam:ipaddress', kwargs={'pk': ipaddress.pk}),
-    })
-
-
 class IPAddressEditView(PermissionRequiredMixin, ObjectEditView):
     permission_required = 'ipam.change_ipaddress'
     model = IPAddress
     form_class = forms.IPAddressForm
-    fields_initial = ['address', 'vrf']
     template_name = 'ipam/ipaddress_edit.html'
     default_return_url = 'ipam:ipaddress_list'
 
@@ -658,8 +584,9 @@ class IPAddressDeleteView(PermissionRequiredMixin, ObjectDeleteView):
 
 class IPAddressBulkAddView(PermissionRequiredMixin, BulkAddView):
     permission_required = 'ipam.add_ipaddress'
-    form = forms.IPAddressBulkAddForm
-    model = IPAddress
+    pattern_form = forms.IPAddressPatternForm
+    model_form = forms.IPAddressBulkAddForm
+    pattern_target = 'address'
     template_name = 'ipam/ipaddress_bulk_add.html'
     default_return_url = 'ipam:ipaddress_list'
 
@@ -718,7 +645,7 @@ class VLANGroupEditView(PermissionRequiredMixin, ObjectEditView):
     model = VLANGroup
     form_class = forms.VLANGroupForm
 
-    def get_return_url(self, obj):
+    def get_return_url(self, request, obj):
         return reverse('ipam:vlangroup_list')
 
 
@@ -807,7 +734,7 @@ class ServiceEditView(PermissionRequiredMixin, ObjectEditView):
             obj.device = get_object_or_404(Device, pk=url_kwargs['device'])
         return obj
 
-    def get_return_url(self, obj):
+    def get_return_url(self, request, obj):
         return obj.device.get_absolute_url()
 
 
