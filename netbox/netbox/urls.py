@@ -31,6 +31,9 @@ _patterns = [
     url(r'^tenancy/', include('tenancy.urls')),
     url(r'^user/', include('users.urls')),
 
+    # Alphalink app
+    url(r'^alphalink/', include('alphalink.urls', namespace='alphalink')),
+
     # API
     url(r'^api/$', APIRootView.as_view(), name='api-root'),
     url(r'^api/circuits/', include('circuits.api.urls')),
@@ -39,6 +42,7 @@ _patterns = [
     url(r'^api/ipam/', include('ipam.api.urls')),
     url(r'^api/secrets/', include('secrets.api.urls')),
     url(r'^api/tenancy/', include('tenancy.api.urls')),
+    url(r'^api/alphalink/', include('alphalink.api.urls')),
     url(r'^api/docs/', swagger_view, name='api_docs'),
 
     # Serving static media in Django to pipe it through LoginRequiredMiddleware

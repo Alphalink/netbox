@@ -3,10 +3,11 @@
 
 {% block form %}
     <div class="panel panel-default">
-        <div class="panel-heading"><strong>Device</strong></div>
+        <div class="panel-heading"><strong>Resource</strong></div>
         <div class="panel-body">
             {% render_field form.name %}
             {% render_field form.device_role %}
+            {% render_field form.tenant %}
         </div>
     </div>
     <div class="panel panel-default">
@@ -28,7 +29,7 @@
                     <label class="col-md-3 control-label">Parent device</label>
                     <div class="col-md-9">
                         <p class="form-control-static">
-                            <a href="{% url 'dcim:device' pk=obj.parent_bay.device.pk %}">{{ obj.parent_bay.device }}</a>
+                            <a href="{% url 'alphalink:device' pk=obj.parent_bay.device.pk %}">{{ obj.parent_bay.device }}</a>
                         </p>
                     </div>
                 </div>
@@ -37,8 +38,8 @@
                     <div class="col-md-9">
                         <p class="form-control-static">
                             {{ obj.parent_bay.name }}
-                            {% if perms.dcim.change_devicebay %}
-                                <a href="{% url 'dcim:devicebay_depopulate' pk=obj.parent_bay.pk %}" class="btn btn-danger btn-xs">
+                            {% if perms.alphalink.change_devicebay %}
+                                <a href="{% url 'alphalink:devicebay_depopulate' pk=obj.parent_bay.pk %}" class="btn btn-danger btn-xs">
                                     <i class="glyphicon glyphicon-remove" aria-hidden="true" title="Remove device"></i> Remove
                                 </a>
                             {% endif %}
@@ -54,20 +55,12 @@
     <div class="panel panel-default">
         <div class="panel-heading"><strong>Management</strong></div>
         <div class="panel-body">
-            {% render_field form.status %}
             {% render_field form.platform %}
+            {% render_field form.status %}
             {% if obj.pk %}
                 {% render_field form.primary_ip4 %}
                 {% render_field form.primary_ip6 %}
             {% endif %}
-            {% render_field form.cluster %}
-        </div>
-    </div>
-    <div class="panel panel-default">
-        <div class="panel-heading"><strong>Tenancy</strong></div>
-        <div class="panel-body">
-            {% render_field form.tenant_group %}
-            {% render_field form.tenant %}
         </div>
     </div>
     {% if form.custom_fields %}

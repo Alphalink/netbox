@@ -976,6 +976,7 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
         verbose_name='Primary IPv6'
     )
     comments = models.TextField(blank=True)
+    cluster = models.ForeignKey('alphalink.Cluster', related_name='members', on_delete=models.PROTECT, blank=True, null=True)
     custom_field_values = GenericRelation(CustomFieldValue, content_type_field='obj_type', object_id_field='obj_id')
     images = GenericRelation(ImageAttachment)
 

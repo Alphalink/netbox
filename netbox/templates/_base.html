@@ -77,6 +77,15 @@
                             <li><a href="{% url 'dcim:rackreservation_list' %}"><i class="fa fa-search" aria-hidden="true"></i> Rack Reservations</a></li>
                         </ul>
                     </li>
+                    <li class="dropdown{% if request.path|contains:'/alphalink/vresources' %} active{% endif %}">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Virtual resources <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="{% url 'alphalink:cluster_list' %}"><i class="fa fa-search" aria-hidden="true"></i> Clusters</a></li>
+                            {% if perms.alphalink.add_cluster %}
+                                <li><a href="{% url 'alphalink:cluster_add' %}"><i class="fa fa-plus" aria-hidden="true"></i> Add a Cluster</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
                     <li class="dropdown{% if request.path|contains:'/dcim/device,/dcim/manufacturers/,/dcim/platforms/' %} active{% endif %}">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Devices <span class="caret"></span></a>
                         <ul class="dropdown-menu">

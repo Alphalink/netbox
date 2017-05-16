@@ -5,6 +5,7 @@ from django.db.models import Q
 
 from extras.filters import CustomFieldFilterSet
 from tenancy.models import Tenant
+from alphalink.models import Cluster
 from utilities.filters import NullableModelMultipleChoiceFilter, NumericInFilter
 from .models import (
     ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
@@ -339,6 +340,12 @@ class DeviceFilter(CustomFieldFilterSet, django_filters.FilterSet):
         queryset=Tenant.objects.all(),
         to_field_name='slug',
         label='Tenant (slug)',
+    )
+    cluster = NullableModelMultipleChoiceFilter(
+        name='cluster',
+        queryset=Cluster.objects.all(),
+        to_field_name='slug',
+        label='Cluster (slug)',
     )
     device_type_id = django_filters.ModelMultipleChoiceFilter(
         name='device_type',
