@@ -874,6 +874,33 @@ def device_lldp_neighbors(request, pk):
         'interfaces': interfaces,
     })
 
+def device_stacking(request, pk):
+
+    device = get_object_or_404(Device, pk=pk)
+    interfaces_id1 = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
+        .filter(name__contains='thernet1/')\
+        .select_related('connected_as_a', 'connected_as_b')
+    interfaces_id2 = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
+        .filter(name__contains='thernet2/')\
+        .select_related('connected_as_a', 'connected_as_b')
+
+    return render(request, 'dcim/stacking.html', {
+        'device': device,
+        'interfaces_id1': interfaces_id1,
+        'interfaces_id2': interfaces_id2,
+    })
+
+def device_convert(request, pk):
+
+    device = get_object_or_404(Device, pk=pk)
+    interfaces = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
+        .select_related('connected_as_a', 'connected_as_b')
+
+    return render(request, 'dcim/device_lldp_neighbors.html', {
+        'device': device,
+        'interfaces': interfaces,
+    })
+
 
 #
 # Console ports

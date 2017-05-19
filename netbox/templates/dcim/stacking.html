@@ -1,0 +1,133 @@
+{% extends '_base.html' %}
+{% load static from staticfiles %}
+{% load render_table from django_tables2 %}
+{% load helpers %}
+
+{% block title %}{{ device }}{% endblock %}
+
+{% block content %}
+{% include 'dcim/inc/device_header.html' with active_tab='stacking' %}
+<div class="row">
+	<div class="col-md-5 col-lg-6">
+        {% if interfaces_id1 %}
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <strong>Interfaces stack-id1</strong>
+                    <div class="pull-right">
+                        <button class="btn btn-default btn-xs toggle-ips" selected="selected">
+                            <span class="glyphicon glyphicon-check" aria-hidden="true"></span> Show IPs
+                        </button>
+                    </div>
+                </div>
+                <table id="interfaces_table" class="table table-hover panel-body component-list">
+                    {% for iface in interfaces_id1 %}
+                        {% include 'dcim/inc/interface.html' with selectable=False %}
+                        <tr class="ipaddress" ><td colspan="7"><span class="text-muted">&nbsp; <i class="fa fa-comment" aria-hidden="true"></i> {{ iface.description }}</span></td></tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4">No interfaces defined</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        {% endif %}
+	</div>
+	<div class="col-md-7 col-lg-6">
+        {% if interfaces_id2 %}
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <strong>Interfaces stack-id2</strong>
+                    <div class="pull-right">
+                        <button class="btn btn-default btn-xs toggle-ips" selected="selected">
+                            <span class="glyphicon glyphicon-check" aria-hidden="true"></span> Show IPs
+                        </button>
+                    </div>
+                </div>
+                <table id="interfaces_table" class="table table-hover panel-body component-list">
+                    {% for iface in interfaces_id2 %}
+                        {% include 'dcim/inc/interface.html' with selectable=False %}
+                        <tr class="ipaddress" ><td colspan="7"><span class="text-muted">&nbsp; <i class="fa fa-comment" aria-hidden="true"></i> {{ iface.description }}</span></td></tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4">No interfaces defined</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        {% endif %}
+	</div>
+</div>
+{% include 'inc/graphs_modal.html' %}
+{% include 'secrets/inc/private_key_modal.html' %}
+{% endblock %}
+
+{% block javascript %}
+<script type="text/javascript">
+function toggleConnection(elem, api_url) {
+    var url = netbox_api_path + api_url + elem.attr('data') + "/";
+    if (elem.hasClass('connected')) {
+        $.ajax({
+            url: url,
+            method: 'PATCH',
+            dataType: 'json',
+            beforeSend: function(xhr, settings) {
+                xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+            },
+            data: {
+                'connection_status': 'False'
+            },
+            context: this,
+            success: function() {
+                elem.parents('tr').removeClass('success').addClass('info');
+                elem.removeClass('connected btn-warning').addClass('btn-success');
+                elem.attr('title', 'Mark connected');
+                elem.children('i').removeClass('glyphicon glyphicon-ban-circle').addClass('fa fa-plug')
+            }
+        });
+    } else {
+        $.ajax({
+            url: url,
+            method: 'PATCH',
+            dataType: 'json',
+            beforeSend: function(xhr, settings) {
+                xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+            },
+            data: {
+                'connection_status': 'True'
+            },
+            context: this,
+            success: function() {
+                elem.parents('tr').removeClass('info').addClass('success');
+                elem.removeClass('btn-success').addClass('connected btn-warning');
+                elem.attr('title', 'Mark disconnected');
+                elem.children('i').removeClass('fa fa-plug').addClass('glyphicon glyphicon-ban-circle')
+            }
+        });
+    }
+    return false;
+}
+$(".consoleport-toggle").click(function() {
+    return toggleConnection($(this), "dcim/console-ports/");
+});
+$(".powerport-toggle").click(function() {
+    return toggleConnection($(this), "dcim/power-ports/");
+});
+$(".interface-toggle").click(function() {
+    return toggleConnection($(this), "dcim/interface-connections/");
+});
+// Toggle the display of IP addresses under interfaces
+$('button.toggle-ips').click(function() {
+    var selected = $(this).attr('selected');
+    if (selected) {
+        $('#interfaces_table tr.ipaddress').hide();
+    } else {
+        $('#interfaces_table tr.ipaddress').show();
+    }
+    $(this).attr('selected', !selected);
+    $(this).children('span').toggleClass('glyphicon-check glyphicon-unchecked');
+    return false;
+});
+</script>
+<script src="{% static 'js/graphs.js' %}?v{{ settings.VERSION }}"></script>
+<script src="{% static 'js/secrets.js' %}?v{{ settings.VERSION }}"></script>
+{% endblock %}
