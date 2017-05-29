@@ -49,9 +49,9 @@
         <li role="presentation"{% if active_tab == 'lldp-neighbors' %} class="active"{% endif %}><a href="{% url 'dcim:device_lldp_neighbors' pk=device.pk %}">LLDP Neighbors</a></li>
     {% endif %}
     {% if "-stack" in device.device_type.slug %}
-        <li role="presentation"{% if active_tab == 'stacking' %} class="active"{% endif %}><a href="{% url 'dcim:device_stacking' pk=device.pk %}">Stacking</a></li>
+        <li role="presentation"{% if active_tab == 'stacking' %} class="active"{% endif %}><a href="{% url 'dcim:device_stacking' pk=device.pk %}">Interfaces</a></li>
     {% endif %}
     {% if "convert" == device.device_role.slug %}
-        <li role="presentation"{% if active_tab == 'convert' %} class="active"{% endif %}><a href="{% url 'dcim:device_convert' pk=device.pk %}">Convert</a></li>
+        <li role="presentation"{% if active_tab == 'convert' %} class="active"{% endif %}><a href="{% url 'dcim:device_convert' pk=device.pk %}">Interfaces</a></li>
     {% endif %}
 </ul>

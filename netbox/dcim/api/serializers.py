@@ -675,7 +675,7 @@ class InterfaceConnectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = InterfaceConnection
-        fields = ['id', 'interface_a', 'interface_b', 'connection_status']
+        fields = ['id', 'interface_a', 'interface_b', 'connection_status', 'description']
 
 
 class NestedInterfaceConnectionSerializer(serializers.ModelSerializer):
@@ -683,11 +683,11 @@ class NestedInterfaceConnectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = InterfaceConnection
-        fields = ['id', 'url', 'connection_status']
+        fields = ['id', 'url', 'connection_status', 'description']
 
 
 class WritableInterfaceConnectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = InterfaceConnection
-        fields = ['id', 'interface_a', 'interface_b', 'connection_status']
+        fields = ['id', 'interface_a', 'interface_b', 'connection_status', 'description']

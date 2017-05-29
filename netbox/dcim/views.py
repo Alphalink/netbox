@@ -2,6 +2,7 @@ from copy import deepcopy
 import re
 from natsort import natsorted
 from operator import attrgetter
+from collections import OrderedDict
 
 from django.contrib import messages
 from django.contrib.auth.decorators import permission_required
@@ -877,6 +878,9 @@ def device_lldp_neighbors(request, pk):
 def device_stacking(request, pk):
 
     device = get_object_or_404(Device, pk=pk)
+    device1 = Device.objects.filter(name__istartswith="{}-id1".format(device.name)).first()
+    device2 = Device.objects.filter(name__istartswith="{}-id2".format(device.name)).first()
+
     interfaces_id1 = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
         .filter(name__contains='thernet1/')\
         .select_related('connected_as_a', 'connected_as_b')
@@ -886,6 +890,8 @@ def device_stacking(request, pk):
 
     return render(request, 'dcim/stacking.html', {
         'device': device,
+        'device1': device1,
+        'device2': device2,
         'interfaces_id1': interfaces_id1,
         'interfaces_id2': interfaces_id2,
     })
@@ -894,11 +900,25 @@ def device_convert(request, pk):
 
     device = get_object_or_404(Device, pk=pk)
     interfaces = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
-        .select_related('connected_as_a', 'connected_as_b')
+        .select_related('connected_as_a', 'connected_as_b', 'circuit_termination__circuit')
 
-    return render(request, 'dcim/device_lldp_neighbors.html', {
+    convert_modules_even = OrderedDict()
+    convert_modules_odd = OrderedDict()
+    for itf in interfaces:
+        match = re.search(r"(?P<module>\d+)/(?P<itf>\d+)", itf.name)
+        if match:
+            if int(match.group('itf'))%2 == 0:
+                if match.group('module') not in convert_modules_even.keys():
+                    convert_modules_even[match.group('module')] = []
+                convert_modules_even[match.group('module')].append(itf)
+            else:
+                if match.group('module') not in convert_modules_odd.keys():
+                    convert_modules_odd[match.group('module')] = []
+                convert_modules_odd[match.group('module')].append(itf)
+    return render(request, 'dcim/device_convert.html', {
         'device': device,
-        'interfaces': interfaces,
+        'modules_even': convert_modules_even,
+        'modules_odd': convert_modules_odd,
     })
 
 

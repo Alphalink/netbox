@@ -517,4 +517,4 @@ class InterfaceConnectionTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = Interface
-        fields = ('device_a', 'interface_a', 'device_b', 'interface_b')
+        fields = ('device_a', 'interface_a', 'device_b', 'interface_b', 'description')

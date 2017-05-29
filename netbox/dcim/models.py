@@ -1390,6 +1390,7 @@ class InterfaceConnection(models.Model):
     """
     interface_a = models.OneToOneField('Interface', related_name='connected_as_a', on_delete=models.CASCADE)
     interface_b = models.OneToOneField('Interface', related_name='connected_as_b', on_delete=models.CASCADE)
+    description = models.CharField(max_length=100, blank=True)
     connection_status = models.BooleanField(choices=CONNECTION_STATUS_CHOICES, default=CONNECTION_STATUS_CONNECTED,
                                             verbose_name='Status')
 
@@ -1407,6 +1408,7 @@ class InterfaceConnection(models.Model):
             self.interface_b.device.identifier,
             self.interface_b.name,
             self.get_connection_status_display(),
+            self.description,
         ])
 
 

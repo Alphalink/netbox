@@ -1447,7 +1447,7 @@ class InterfaceConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.ModelFor
 
     class Meta:
         model = InterfaceConnection
-        fields = ['interface_a', 'site_b', 'rack_b', 'device_b', 'interface_b', 'livesearch', 'connection_status']
+        fields = ['interface_a', 'site_b', 'rack_b', 'device_b', 'interface_b', 'livesearch', 'connection_status', 'description']
 
     def __init__(self, device_a, *args, **kwargs):
 
