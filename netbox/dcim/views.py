@@ -882,10 +882,10 @@ def device_stacking(request, pk):
     device2 = Device.objects.filter(name__istartswith="{}-id2".format(device.name)).first()
 
     interfaces_id1 = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
-        .filter(name__contains='thernet1/')\
+        .filter(name__iregex=r'1\/\d+\/\d+')\
         .select_related('connected_as_a', 'connected_as_b')
     interfaces_id2 = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
-        .filter(name__contains='thernet2/')\
+        .filter(name__iregex=r'2\/\d+\/\d+')\
         .select_related('connected_as_a', 'connected_as_b')
 
     return render(request, 'dcim/stacking.html', {
