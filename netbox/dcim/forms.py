@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from mptt.forms import TreeNodeChoiceField
 import re
 
@@ -16,7 +18,6 @@ from utilities.forms import (
     FilterChoiceField, FlexibleModelChoiceField, Livesearch, SelectWithDisabled, SmallTextarea, SlugField,
     FilterTreeNodeMultipleChoiceField,
 )
-
 from .formfields import MACAddressFormField
 from .models import (
     DeviceBay, DeviceBayTemplate, CONNECTION_STATUS_CHOICES, CONNECTION_STATUS_PLANNED, CONNECTION_STATUS_CONNECTED,
@@ -189,7 +190,9 @@ class RackRoleForm(BootstrapMixin, forms.ModelForm):
 class RackForm(BootstrapMixin, TenancyForm, CustomFieldForm):
     group = ChainedModelChoiceField(
         queryset=RackGroup.objects.all(),
-        chains={'site': 'site'},
+        chains=(
+            ('site', 'site'),
+        ),
         required=False,
         widget=APISelect(
             api_url='/api/dcim/rack-groups/?site_id={{site}}',
@@ -544,7 +547,9 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
     )
     rack = ChainedModelChoiceField(
         queryset=Rack.objects.all(),
-        chains={'site': 'site'},
+        chains=(
+            ('site', 'site'),
+        ),
         required=False,
         widget=APISelect(
             api_url='/api/dcim/racks/?site_id={{site}}',
@@ -569,7 +574,9 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
     )
     device_type = ChainedModelChoiceField(
         queryset=DeviceType.objects.all(),
-        chains={'manufacturer': 'manufacturer'},
+        chains=(
+            ('manufacturer', 'manufacturer'),
+        ),
         label='Device type',
         widget=APISelect(
             api_url='/api/dcim/device-types/?manufacturer_id={{manufacturer}}',
@@ -610,10 +617,10 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
             for family in [4, 6]:
                 ip_choices = []
                 interface_ips = IPAddress.objects.filter(family=family, interface__device=self.instance)
-                ip_choices += [(ip.id, u'{} ({})'.format(ip.address, ip.interface)) for ip in interface_ips]
+                ip_choices += [(ip.id, '{} ({})'.format(ip.address, ip.interface)) for ip in interface_ips]
                 nat_ips = IPAddress.objects.filter(family=family, nat_inside__interface__device=self.instance)\
                     .select_related('nat_inside__interface')
-                ip_choices += [(ip.id, u'{} ({} NAT)'.format(ip.address, ip.nat_inside.interface)) for ip in nat_ips]
+                ip_choices += [(ip.id, '{} ({} NAT)'.format(ip.address, ip.nat_inside.interface)) for ip in nat_ips]
                 self.fields['primary_ip{}'.format(family)].choices = [(None, '---------')] + ip_choices
 
             # If editing an existing device, exclude it from the list of occupied rack units. This ensures that a device
@@ -674,7 +681,7 @@ class BaseDeviceFromCSVForm(forms.ModelForm):
         queryset=Platform.objects.all(), required=False, to_field_name='name',
         error_messages={'invalid_choice': 'Invalid platform.'}
     )
-    status_name = forms.ChoiceField(choices=[(s[1], s[0]) for s in STATUS_CHOICES])
+    status = forms.CharField()
 
     class Meta:
         fields = []
@@ -692,8 +699,12 @@ class BaseDeviceFromCSVForm(forms.ModelForm):
             except DeviceType.DoesNotExist:
                 self.add_error('model_name', "Invalid device type ({} {})".format(manufacturer, model_name))
 
-    def clean_status_name(self):
-        return dict(self.fields['status_name'].choices)[self.cleaned_data['status_name']]
+    def clean_status(self):
+        status_choices = {s[1].lower(): s[0] for s in STATUS_CHOICES}
+        try:
+            return status_choices[self.cleaned_data['status'].lower()]
+        except KeyError:
+            raise ValidationError("Invalid status: {}".format(self.cleaned_data['status']))
 
 
 class DeviceFromCSVForm(BaseDeviceFromCSVForm):
@@ -707,8 +718,8 @@ class DeviceFromCSVForm(BaseDeviceFromCSVForm):
 
     class Meta(BaseDeviceFromCSVForm.Meta):
         fields = [
-            'name', 'device_role', 'tenant', 'manufacturer', 'model_name', 'platform', 'serial', 'asset_tag',
-            'status_name', 'site', 'rack_name', 'position', 'face',
+            'name', 'device_role', 'tenant', 'manufacturer', 'model_name', 'platform', 'serial', 'asset_tag', 'status',
+            'site', 'rack_name', 'position', 'face',
         ]
 
     def clean(self):
@@ -751,8 +762,8 @@ class ChildDeviceFromCSVForm(BaseDeviceFromCSVForm):
 
     class Meta(BaseDeviceFromCSVForm.Meta):
         fields = [
-            'name', 'device_role', 'tenant', 'manufacturer', 'model_name', 'platform', 'serial', 'asset_tag',
-            'status_name', 'parent', 'device_bay_name',
+            'name', 'device_role', 'tenant', 'manufacturer', 'model_name', 'platform', 'serial', 'asset_tag', 'status',
+            'parent', 'device_bay_name',
         ]
 
     def clean(self):
@@ -800,7 +811,7 @@ def device_status_choices():
     status_counts = {}
     for status in Device.objects.values('status').annotate(count=Count('status')).order_by('status'):
         status_counts[status['status']] = status['count']
-    return [(s[0], u'{} ({})'.format(s[1], status_counts.get(s[0], 0))) for s in STATUS_CHOICES]
+    return [(s[0], '{} ({})'.format(s[1], status_counts.get(s[0], 0))) for s in STATUS_CHOICES]
 
 
 class DeviceFilterForm(BootstrapMixin, CustomFieldFilterForm):
@@ -817,13 +828,15 @@ class DeviceFilterForm(BootstrapMixin, CustomFieldFilterForm):
     rack_id = FilterChoiceField(
         queryset=Rack.objects.annotate(filter_count=Count('devices')),
         label='Rack',
+        null_option=(0, 'None'),
     )
     role = FilterChoiceField(
         queryset=DeviceRole.objects.annotate(filter_count=Count('devices')),
         to_field_name='slug',
     )
     tenant = FilterChoiceField(
-        queryset=Tenant.objects.annotate(filter_count=Count('devices')), to_field_name='slug',
+        queryset=Tenant.objects.annotate(filter_count=Count('devices')),
+        to_field_name='slug',
         null_option=(0, 'None'),
     )
     manufacturer_id = FilterChoiceField(queryset=Manufacturer.objects.all(), label='Manufacturer')
@@ -950,20 +963,29 @@ class ConsoleConnectionImportForm(BootstrapMixin, BulkImportForm):
 class ConsolePortConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.ModelForm):
     site = forms.ModelChoiceField(
         queryset=Site.objects.all(),
-        widget=forms.HiddenInput(),
+        required=False,
+        widget=forms.Select(
+            attrs={'filter-for': 'rack'}
+        )
     )
     rack = ChainedModelChoiceField(
         queryset=Rack.objects.all(),
-        chains={'site': 'site'},
+        chains=(
+            ('site', 'site'),
+        ),
         label='Rack',
         required=False,
-        widget=forms.Select(
+        widget=APISelect(
+            api_url='/api/dcim/racks/?site_id={{site}}',
             attrs={'filter-for': 'console_server', 'nullable': 'true'}
         )
     )
     console_server = ChainedModelChoiceField(
         queryset=Device.objects.filter(device_type__is_console_server=True),
-        chains={'site': 'site', 'rack': 'rack'},
+        chains=(
+            ('site', 'site'),
+            ('rack', 'rack'),
+        ),
         label='Console Server',
         required=False,
         widget=APISelect(
@@ -983,7 +1005,9 @@ class ConsolePortConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.ModelF
     )
     cs_port = ChainedModelChoiceField(
         queryset=ConsoleServerPort.objects.all(),
-        chains={'device': 'console_server'},
+        chains=(
+            ('device', 'console_server'),
+        ),
         label='Port',
         widget=APISelect(
             api_url='/api/dcim/console-server-ports/?device_id={{console_server}}',
@@ -1028,20 +1052,29 @@ class ConsoleServerPortCreateForm(DeviceComponentForm):
 class ConsoleServerPortConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.Form):
     site = forms.ModelChoiceField(
         queryset=Site.objects.all(),
-        widget=forms.HiddenInput(),
+        required=False,
+        widget=forms.Select(
+            attrs={'filter-for': 'rack'}
+        )
     )
     rack = ChainedModelChoiceField(
         queryset=Rack.objects.all(),
-        chains={'site': 'site'},
+        chains=(
+            ('site', 'site'),
+        ),
         label='Rack',
         required=False,
-        widget=forms.Select(
+        widget=APISelect(
+            api_url='/api/dcim/racks/?site_id={{site}}',
             attrs={'filter-for': 'device', 'nullable': 'true'}
         )
     )
     device = ChainedModelChoiceField(
         queryset=Device.objects.all(),
-        chains={'site': 'site', 'rack': 'rack'},
+        chains=(
+            ('site', 'site'),
+            ('rack', 'rack'),
+        ),
         label='Device',
         required=False,
         widget=APISelect(
@@ -1061,7 +1094,9 @@ class ConsoleServerPortConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.
     )
     port = ChainedModelChoiceField(
         queryset=ConsolePort.objects.all(),
-        chains={'device': 'device'},
+        chains=(
+            ('device', 'device'),
+        ),
         label='Port',
         widget=APISelect(
             api_url='/api/dcim/console-ports/?device_id={{device}}',
@@ -1175,19 +1210,31 @@ class PowerConnectionImportForm(BootstrapMixin, BulkImportForm):
 
 
 class PowerPortConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.ModelForm):
-    site = forms.ModelChoiceField(queryset=Site.objects.all(), widget=forms.HiddenInput())
-    rack = ChainedModelChoiceField(
-        queryset=Rack.objects.all(),
-        chains={'site': 'site'},
-        label='Rack',
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
         required=False,
         widget=forms.Select(
+            attrs={'filter-for': 'rack'}
+        )
+    )
+    rack = ChainedModelChoiceField(
+        queryset=Rack.objects.all(),
+        chains=(
+            ('site', 'site'),
+        ),
+        label='Rack',
+        required=False,
+        widget=APISelect(
+            api_url='/api/dcim/racks/?site_id={{site}}',
             attrs={'filter-for': 'pdu', 'nullable': 'true'}
         )
     )
     pdu = ChainedModelChoiceField(
         queryset=Device.objects.all(),
-        chains={'site': 'site', 'rack': 'rack'},
+        chains=(
+            ('site', 'site'),
+            ('rack', 'rack'),
+        ),
         label='PDU',
         required=False,
         widget=APISelect(
@@ -1207,7 +1254,9 @@ class PowerPortConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.ModelFor
     )
     power_outlet = ChainedModelChoiceField(
         queryset=PowerOutlet.objects.all(),
-        chains={'device': 'device'},
+        chains=(
+            ('device', 'pdu'),
+        ),
         label='Outlet',
         widget=APISelect(
             api_url='/api/dcim/power-outlets/?device_id={{pdu}}',
@@ -1252,20 +1301,29 @@ class PowerOutletCreateForm(DeviceComponentForm):
 class PowerOutletConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.Form):
     site = forms.ModelChoiceField(
         queryset=Site.objects.all(),
-        widget=forms.HiddenInput()
+        required=False,
+        widget=forms.Select(
+            attrs={'filter-for': 'rack'}
+        )
     )
     rack = ChainedModelChoiceField(
         queryset=Rack.objects.all(),
-        chains={'site': 'site'},
+        chains=(
+            ('site', 'site'),
+        ),
         label='Rack',
         required=False,
-        widget=forms.Select(
+        widget=APISelect(
+            api_url='/api/dcim/racks/?site_id={{site}}',
             attrs={'filter-for': 'device', 'nullable': 'true'}
         )
     )
     device = ChainedModelChoiceField(
         queryset=Device.objects.all(),
-        chains={'site': 'site', 'rack': 'rack'},
+        chains=(
+            ('site', 'site'),
+            ('rack', 'rack'),
+        ),
         label='Device',
         required=False,
         widget=APISelect(
@@ -1285,7 +1343,9 @@ class PowerOutletConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.Form):
     )
     port = ChainedModelChoiceField(
         queryset=PowerPort.objects.all(),
-        chains={'device': 'device'},
+        chains=(
+            ('device', 'device'),
+        ),
         label='Port',
         widget=APISelect(
             api_url='/api/dcim/power-ports/?device_id={{device}}',
@@ -1405,7 +1465,9 @@ class InterfaceConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.ModelFor
     )
     rack_b = ChainedModelChoiceField(
         queryset=Rack.objects.all(),
-        chains={'site': 'site_b'},
+        chains=(
+            ('site', 'site_b'),
+        ),
         label='Rack',
         required=False,
         widget=APISelect(
@@ -1415,7 +1477,10 @@ class InterfaceConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.ModelFor
     )
     device_b = ChainedModelChoiceField(
         queryset=Device.objects.all(),
-        chains={'site': 'site_b', 'rack': 'rack_b'},
+        chains=(
+            ('site', 'site_b'),
+            ('rack', 'rack_b'),
+        ),
         label='Device',
         required=False,
         widget=APISelect(
@@ -1437,11 +1502,13 @@ class InterfaceConnectionForm(BootstrapMixin, ChainedFieldsMixin, forms.ModelFor
         queryset=Interface.objects.exclude(form_factor__in=VIRTUAL_IFACE_TYPES).select_related(
             'circuit_termination', 'connected_as_a', 'connected_as_b'
         ),
-        chains={'device': 'device_b'},
+        chains=(
+            ('device', 'device_b'),
+        ),
         label='Interface',
         widget=APISelect(
             api_url='/api/dcim/interfaces/?device_id={{device_b}}&type=physical',
-            disabled_indicator='is_connected'
+            disabled_indicator='connection'
         )
     )
 
