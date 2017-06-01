@@ -932,7 +932,7 @@ class DeviceStackingView(View):
             'interfaces_id2': interfaces_id2,
         })
 
-def DeviceConvertView(View):
+class DeviceConvertView(View):
 
     def get(self, request, pk):
 
