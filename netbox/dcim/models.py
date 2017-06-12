@@ -280,6 +280,10 @@ class Site(CreatedUpdatedModel, CustomFieldModel):
 
     objects = SiteManager()
 
+    csv_headers = [
+        'name', 'slug', 'region', 'tenant', 'facility', 'asn', 'contact_name', 'contact_phone', 'contact_email',
+    ]
+
     class Meta:
         ordering = ['name']
 
@@ -346,7 +350,7 @@ class RackGroup(models.Model):
         ]
 
     def __str__(self):
-        return '{} - {}'.format(self.site.name, self.name)
+        return self.name
 
     def get_absolute_url(self):
         return "{}?group_id={}".format(reverse('dcim:rack_list'), self.pk)
@@ -401,6 +405,10 @@ class Rack(CreatedUpdatedModel, CustomFieldModel):
     images = GenericRelation(ImageAttachment)
 
     objects = RackManager()
+
+    csv_headers = [
+        'site', 'group_name', 'name', 'facility_id', 'tenant', 'role', 'type', 'width', 'u_height', 'desc_units',
+    ]
 
     class Meta:
         ordering = ['site', 'name']
@@ -982,6 +990,11 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
 
     objects = DeviceManager()
 
+    csv_headers = [
+        'name', 'device_role', 'tenant', 'manufacturer', 'model_name', 'platform', 'serial', 'asset_tag', 'status',
+        'site', 'rack_group', 'rack_name', 'position', 'face',
+    ]
+
     class Meta:
         ordering = ['name']
         unique_together = ['rack', 'position', 'face']
@@ -1097,6 +1110,7 @@ class Device(CreatedUpdatedModel, CustomFieldModel):
             self.asset_tag,
             self.get_status_display(),
             self.site.name,
+            self.rack.group.name if self.rack and self.rack.group else None,
             self.rack.name if self.rack else None,
             self.position,
             self.get_face_display(),
@@ -1162,6 +1176,8 @@ class ConsolePort(models.Model):
     cs_port = models.OneToOneField('ConsoleServerPort', related_name='connected_console', on_delete=models.SET_NULL,
                                    verbose_name='Console server port', blank=True, null=True)
     connection_status = models.NullBooleanField(choices=CONNECTION_STATUS_CHOICES, default=CONNECTION_STATUS_CONNECTED)
+
+    csv_headers = ['console_server', 'cs_port', 'device', 'console_port', 'connection_status']
 
     class Meta:
         ordering = ['device', 'name']
@@ -1231,6 +1247,8 @@ class PowerPort(models.Model):
     power_outlet = models.OneToOneField('PowerOutlet', related_name='connected_port', on_delete=models.SET_NULL,
                                         blank=True, null=True)
     connection_status = models.NullBooleanField(choices=CONNECTION_STATUS_CHOICES, default=CONNECTION_STATUS_CONNECTED)
+
+    csv_headers = ['pdu', 'power_outlet', 'device', 'power_port', 'connection_status']
 
     class Meta:
         ordering = ['device', 'name']
@@ -1394,11 +1412,16 @@ class InterfaceConnection(models.Model):
     connection_status = models.BooleanField(choices=CONNECTION_STATUS_CHOICES, default=CONNECTION_STATUS_CONNECTED,
                                             verbose_name='Status')
 
+    csv_headers = ['device_a', 'interface_a', 'device_b', 'interface_b', 'connection_status']
+
     def clean(self):
-        if self.interface_a == self.interface_b:
-            raise ValidationError({
-                'interface_b': "Cannot connect an interface to itself."
-            })
+        try:
+            if self.interface_a == self.interface_b:
+                raise ValidationError({
+                    'interface_b': "Cannot connect an interface to itself."
+                })
+        except ObjectDoesNotExist:
+            pass
 
     # Used for connections export
     def to_csv(self):
