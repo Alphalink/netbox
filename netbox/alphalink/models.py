@@ -65,7 +65,7 @@ class Cluster(CreatedUpdatedModel):
         """
         Determine the utilization of type (CPU|RAM) of the cluster and return it
         """
-        resource_device_type = DeviceType.objects.filter(model="VM")
+        resource_device_type = DeviceType.objects.filter(model="VM Qemu/KVM")
         resources = Device.objects.filter(cluster__name=self.name, device_type=resource_device_type)
         type_used = 0
         for resource in resources:

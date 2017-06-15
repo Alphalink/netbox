@@ -65,10 +65,10 @@ def cluster(request, slug):
       modules_resource = InventoryItem.objects.filter(device=resource).filter(Q(name="CPU") | Q(name="RAM"))
       for module in modules_resource:
 	if module.name == "CPU":
-          tmp_module.cpu = tmp_module.cpu + int(module.part_id)
+          tmp_module.cpu = tmp_module.cpu + int('0'+module.part_id)
 	else:
-          tmp_module.memory = tmp_module.memory + int(module.part_id)
-        total_used[module.name] = total_used[module.name] + int(module.part_id)
+          tmp_module.memory = tmp_module.memory + int('0'+module.part_id)
+        total_used[module.name] = total_used[module.name] + int('0'+module.part_id)
       resource_modules.append(tmp_module)
 
     return render(request, 'alphalink/cluster.html', {
