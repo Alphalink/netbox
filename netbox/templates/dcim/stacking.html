@@ -9,13 +9,13 @@
 {% include 'dcim/inc/device_header.html' with active_tab='stacking' %}
 <div class="row">
 	<div class="col-md-5 col-lg-6">
-        {% if interfaces_id1 %}
+        {% for module,itfs in interfaces_id1.items %}
             <div class="panel panel-default">
                 <div class="panel-heading">
-                    <strong>Interfaces <a href="{% url 'dcim:device' pk=device1.pk %}">{{ device1 }}</a></strong>
+                    <strong>Module {{ module }} <a href="{% url 'dcim:device' pk=device1.pk %}">{{ device1 }}</a></strong>
                 </div>
                 <table id="interfaces_table" class="table table-hover panel-body component-list">
-                    {% for iface in interfaces_id1 %}
+                    {% for iface in itfs %}
                         {% include 'dcim/inc/interface_alphalink.html' with selectable=False %}
                     {% empty %}
                         <tr>
@@ -24,16 +24,16 @@
                     {% endfor %}
                 </table>
             </div>
-        {% endif %}
+        {% endfor %}
 	</div>
 	<div class="col-md-7 col-lg-6">
-        {% if interfaces_id2 %}
+        {% for module,itfs in interfaces_id2.items %}
             <div class="panel panel-default">
                 <div class="panel-heading">
-                    <strong>Interfaces <a href="{% url 'dcim:device' pk=device2.pk %}">{{ device2 }}</a></strong>
+                    <strong>Module {{ module }} <a href="{% url 'dcim:device' pk=device2.pk %}">{{ device1 }}</a></strong>
                 </div>
                 <table id="interfaces_table" class="table table-hover panel-body component-list">
-                    {% for iface in interfaces_id2 %}
+                    {% for iface in itfs %}
                         {% include 'dcim/inc/interface_alphalink.html' with selectable=False %}
                     {% empty %}
                         <tr>
@@ -42,7 +42,7 @@
                     {% endfor %}
                 </table>
             </div>
-        {% endif %}
+        {% endfor %}
 	</div>
 </div>
 {% include 'inc/graphs_modal.html' %}

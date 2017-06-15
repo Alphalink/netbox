@@ -909,12 +909,27 @@ class DeviceStackingView(View):
         device1 = Device.objects.filter(name__istartswith="{}-id1".format(device.name)).first()
         device2 = Device.objects.filter(name__istartswith="{}-id2".format(device.name)).first()
 
-        interfaces_id1 = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
+        itfs_id1 = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
             .filter(name__iregex=r'1\/\d+\/\d+')\
             .select_related('connected_as_a', 'connected_as_b')
-        interfaces_id2 = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
+        itfs_id2 = Interface.objects.order_naturally(device.device_type.interface_ordering).filter(device=device)\
             .filter(name__iregex=r'2\/\d+\/\d+')\
             .select_related('connected_as_a', 'connected_as_b')
+
+        interfaces_id1 = OrderedDict()
+        interfaces_id2 = OrderedDict()
+        for itf in itfs_id1:
+            match = re.search(r"\d+/(?P<module>\d+)/(?P<itf>\d+)", itf.name)
+            if match:
+                if match.group('module') not in interfaces_id1.keys():
+                    interfaces_id1[match.group('module')] = []
+                interfaces_id1[match.group('module')].append(itf)
+        for itf in itfs_id2:
+            match = re.search(r"\d+/(?P<module>\d+)/(?P<itf>\d+)", itf.name)
+            if match:
+                if match.group('module') not in interfaces_id2.keys():
+                    interfaces_id2[match.group('module')] = []
+                interfaces_id2[match.group('module')].append(itf)
 
         return render(request, 'dcim/stacking.html', {
             'device': device,
