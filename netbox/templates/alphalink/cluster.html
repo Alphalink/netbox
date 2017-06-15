@@ -95,9 +95,10 @@
             <table class="table table-hover panel-body">
                 {% for module in resource_module %}
                   <tr>
-                    <td colspan="2"><a href="{% url 'dcim:device' pk=module.id %}">{{ module.name }}</a></td>
-                        <td colspan="1">{{ module.cpu }} CPU</td>
-                        <td colspan="1">{{ module.memory }} MB</td>
+                    <td colspan="1"><a href="{% url 'dcim:device' pk=module.id %}">{{ module.name }}</a></td>
+                    <td><span class="label label-{{ module.get_status_class }}">{{ module.get_status_display }}</span> <label class="label" style="background-color: #{{ module.device_role.color }}">{{ module.device_role }}</label></td>
+                    <td colspan="1">{{ module.cpu }} CPU</td>
+                    <td colspan="1">{{ module.memory }} MB</td>
                   </tr>
                 {% empty %}
                 <tr>
@@ -106,20 +107,19 @@
                 {% endfor %}
             </table>
         </div>
-	</div>
-	<div class="col-md-7 col-lg-6">
         <div class="panel panel-default">
             <div class="panel-heading">
-                <strong>Hypervisors</strong>
+                <strong>Members</strong>
             </div>
             <table class="table table-hover panel-body">
-                {% for hypervisor in hypervisors %}
+                {% for member in members %}
                 <tr>
-                    <td colspan="4"><a href="{% url 'dcim:device' pk=hypervisor.pk %}">{{ hypervisor.name }}</a></td>
+                    <td colspan="3"><a href="{% url 'dcim:device' pk=member.pk %}">{{ member.name }}</a></td>
+                    <td><span class="label label-{{ member.get_status_class }}">{{ member.get_status_display }}</span> <span class="label" style="background-color: #{{ member.device_role.color }}">{{ member.device_role }}</span></td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4">No Hypervisors defined</td>
+                    <td colspan="4">No members defined</td>
                 </tr>
                 {% endfor %}
             </table>

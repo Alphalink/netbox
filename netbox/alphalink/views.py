@@ -14,7 +14,7 @@ from django.utils.http import urlencode
 from django.views.generic import View
 
 from ipam.models import Prefix, IPAddress, Service, VLAN
-from dcim.models import Device, DeviceType, InventoryItem
+from dcim.models import Device, DeviceType, DeviceRole, InventoryItem
 from dcim.forms import DeviceForm
 from circuits.models import Circuit
 from extras.models import Graph, TopologyMap, GRAPH_TYPE_INTERFACE, GRAPH_TYPE_SITE
@@ -50,16 +50,16 @@ def cluster(request, slug):
     resource_device_type = get_object_or_404(DeviceType.objects.filter(model="VM Qemu/KVM"))
 
     cluster = get_object_or_404(Cluster.objects.all(), slug=slug)
-    hypervisors = Device.objects.filter(cluster=cluster).exclude(device_type=resource_device_type)
+    members = Device.objects.filter(cluster=cluster).exclude(device_type=resource_device_type)
     resources = Device.objects.filter(cluster=cluster, device_type=resource_device_type)
 
     total_used = { 'RAM': 0, 'CPU': 0}
     # Get CPU and memory for each resource
     resource_modules = []
     for resource in resources:
-      tmp_module = Resource()
-      tmp_module.id = resource.id
-      tmp_module.name = resource.name
+      tmp_module = resource
+      #tmp_module.id = resource.id
+      #tmp_module.name = resource.name
       tmp_module.memory = 0
       tmp_module.cpu = 0
       modules_resource = InventoryItem.objects.filter(device=resource).filter(Q(name="CPU") | Q(name="RAM"))
@@ -71,11 +71,9 @@ def cluster(request, slug):
         total_used[module.name] = total_used[module.name] + int(module.part_id)
       resource_modules.append(tmp_module)
 
-    print(resource_modules)
-
     return render(request, 'alphalink/cluster.html', {
         'cluster': cluster,
-        'hypervisors': hypervisors,
+        'members': members,
         'total_cpu_free': cluster.cpu - total_used['CPU'],
         'total_ram_free': cluster.memory - total_used['RAM'],
         'resources': resources,
