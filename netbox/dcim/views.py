@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 from copy import deepcopy
-from difflib import SequenceMatcher
 import re
 from natsort import natsorted
 from operator import attrgetter
@@ -10,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import permission_required
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.core.paginator import EmptyPage, PageNotAnInteger
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -143,6 +142,44 @@ class ComponentDeleteView(ObjectDeleteView):
         return obj.device.get_absolute_url()
 
 
+class BulkDisconnectView(View):
+    """
+    An extendable view for disconnection console/power/interface components in bulk.
+    """
+    model = None
+    form = None
+    template_name = 'dcim/bulk_disconnect.html'
+
+    def disconnect_objects(self, objects):
+        raise NotImplementedError()
+
+    def post(self, request, pk):
+
+        device = get_object_or_404(Device, pk=pk)
+        selected_objects = []
+
+        if '_confirm' in request.POST:
+            form = self.form(request.POST)
+            if form.is_valid():
+                count = self.disconnect_objects(form.cleaned_data['pk'])
+                messages.success(request, "Disconnected {} {} on {}".format(
+                    count, self.model._meta.verbose_name_plural, device
+                ))
+                return redirect(device.get_absolute_url())
+
+        else:
+            form = self.form(initial={'pk': request.POST.getlist('pk')})
+            selected_objects = self.model.objects.filter(pk__in=form.initial['pk'])
+
+        return render(request, self.template_name, {
+            'form': form,
+            'device': device,
+            'obj_type_plural': self.model._meta.verbose_name_plural,
+            'selected_objects': selected_objects,
+            'return_url': device.get_absolute_url(),
+        })
+
+
 #
 # Regions
 #
@@ -153,13 +190,17 @@ class RegionListView(ObjectListView):
     template_name = 'dcim/region_list.html'
 
 
-class RegionEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_region'
+class RegionCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_region'
     model = Region
     form_class = forms.RegionForm
 
     def get_return_url(self, request, obj):
         return reverse('dcim:region_list')
+
+
+class RegionEditView(RegionCreateView):
+    permission_required = 'dcim.change_region'
 
 
 class RegionBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
@@ -205,12 +246,16 @@ class SiteView(View):
         })
 
 
-class SiteEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_site'
+class SiteCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_site'
     model = Site
     form_class = forms.SiteForm
     template_name = 'dcim/site_edit.html'
     default_return_url = 'dcim:site_list'
+
+
+class SiteEditView(SiteCreateView):
+    permission_required = 'dcim.change_site'
 
 
 class SiteDeleteView(PermissionRequiredMixin, ObjectDeleteView):
@@ -247,13 +292,17 @@ class RackGroupListView(ObjectListView):
     template_name = 'dcim/rackgroup_list.html'
 
 
-class RackGroupEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_rackgroup'
+class RackGroupCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_rackgroup'
     model = RackGroup
     form_class = forms.RackGroupForm
 
     def get_return_url(self, request, obj):
         return reverse('dcim:rackgroup_list')
+
+
+class RackGroupEditView(RackGroupCreateView):
+    permission_required = 'dcim.change_rackgroup'
 
 
 class RackGroupBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
@@ -273,13 +322,17 @@ class RackRoleListView(ObjectListView):
     template_name = 'dcim/rackrole_list.html'
 
 
-class RackRoleEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_rackrole'
+class RackRoleCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_rackrole'
     model = RackRole
     form_class = forms.RackRoleForm
 
     def get_return_url(self, request, obj):
         return reverse('dcim:rackrole_list')
+
+
+class RackRoleEditView(RackRoleCreateView):
+    permission_required = 'dcim.change_rackrole'
 
 
 class RackRoleBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
@@ -375,12 +428,16 @@ class RackView(View):
         })
 
 
-class RackEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_rack'
+class RackCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_rack'
     model = Rack
     form_class = forms.RackForm
     template_name = 'dcim/rack_edit.html'
     default_return_url = 'dcim:rack_list'
+
+
+class RackEditView(RackCreateView):
+    permission_required = 'dcim.change_rack'
 
 
 class RackDeleteView(PermissionRequiredMixin, ObjectDeleteView):
@@ -424,8 +481,8 @@ class RackReservationListView(ObjectListView):
     template_name = 'dcim/rackreservation_list.html'
 
 
-class RackReservationEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_rackreservation'
+class RackReservationCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_rackreservation'
     model = RackReservation
     form_class = forms.RackReservationForm
 
@@ -437,6 +494,10 @@ class RackReservationEditView(PermissionRequiredMixin, ObjectEditView):
 
     def get_return_url(self, request, obj):
         return obj.rack.get_absolute_url()
+
+
+class RackReservationEditView(RackReservationCreateView):
+    permission_required = 'dcim.change_rackreservation'
 
 
 class RackReservationDeleteView(PermissionRequiredMixin, ObjectDeleteView):
@@ -463,13 +524,17 @@ class ManufacturerListView(ObjectListView):
     template_name = 'dcim/manufacturer_list.html'
 
 
-class ManufacturerEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_manufacturer'
+class ManufacturerCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_manufacturer'
     model = Manufacturer
     form_class = forms.ManufacturerForm
 
     def get_return_url(self, request, obj):
         return reverse('dcim:manufacturer_list')
+
+
+class ManufacturerEditView(ManufacturerCreateView):
+    permission_required = 'dcim.change_manufacturer'
 
 
 class ManufacturerBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
@@ -543,12 +608,16 @@ class DeviceTypeView(View):
         })
 
 
-class DeviceTypeEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_devicetype'
+class DeviceTypeCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_devicetype'
     model = DeviceType
     form_class = forms.DeviceTypeForm
     template_name = 'dcim/devicetype_edit.html'
     default_return_url = 'dcim:devicetype_list'
+
+
+class DeviceTypeEditView(DeviceTypeCreateView):
+    permission_required = 'dcim.change_devicetype'
 
 
 class DeviceTypeDeleteView(PermissionRequiredMixin, ObjectDeleteView):
@@ -577,7 +646,7 @@ class DeviceTypeBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 # Device type components
 #
 
-class ConsolePortTemplateAddView(PermissionRequiredMixin, ComponentCreateView):
+class ConsolePortTemplateCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_consoleporttemplate'
     parent_model = DeviceType
     parent_field = 'device_type'
@@ -594,7 +663,7 @@ class ConsolePortTemplateBulkDeleteView(PermissionRequiredMixin, BulkDeleteView)
     parent_cls = DeviceType
 
 
-class ConsoleServerPortTemplateAddView(PermissionRequiredMixin, ComponentCreateView):
+class ConsoleServerPortTemplateCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_consoleserverporttemplate'
     parent_model = DeviceType
     parent_field = 'device_type'
@@ -609,7 +678,7 @@ class ConsoleServerPortTemplateBulkDeleteView(PermissionRequiredMixin, BulkDelet
     parent_cls = DeviceType
 
 
-class PowerPortTemplateAddView(PermissionRequiredMixin, ComponentCreateView):
+class PowerPortTemplateCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_powerporttemplate'
     parent_model = DeviceType
     parent_field = 'device_type'
@@ -624,7 +693,7 @@ class PowerPortTemplateBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     parent_cls = DeviceType
 
 
-class PowerOutletTemplateAddView(PermissionRequiredMixin, ComponentCreateView):
+class PowerOutletTemplateCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_poweroutlettemplate'
     parent_model = DeviceType
     parent_field = 'device_type'
@@ -639,7 +708,7 @@ class PowerOutletTemplateBulkDeleteView(PermissionRequiredMixin, BulkDeleteView)
     parent_cls = DeviceType
 
 
-class InterfaceTemplateAddView(PermissionRequiredMixin, ComponentCreateView):
+class InterfaceTemplateCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_interfacetemplate'
     parent_model = DeviceType
     parent_field = 'device_type'
@@ -662,7 +731,7 @@ class InterfaceTemplateBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     parent_cls = DeviceType
 
 
-class DeviceBayTemplateAddView(PermissionRequiredMixin, ComponentCreateView):
+class DeviceBayTemplateCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_devicebaytemplate'
     parent_model = DeviceType
     parent_field = 'device_type'
@@ -687,13 +756,17 @@ class DeviceRoleListView(ObjectListView):
     template_name = 'dcim/devicerole_list.html'
 
 
-class DeviceRoleEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_devicerole'
+class DeviceRoleCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_devicerole'
     model = DeviceRole
     form_class = forms.DeviceRoleForm
 
     def get_return_url(self, request, obj):
         return reverse('dcim:devicerole_list')
+
+
+class DeviceRoleEditView(DeviceRoleCreateView):
+    permission_required = 'dcim.change_devicerole'
 
 
 class DeviceRoleBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
@@ -712,13 +785,17 @@ class PlatformListView(ObjectListView):
     template_name = 'dcim/platform_list.html'
 
 
-class PlatformEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_platform'
+class PlatformCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_platform'
     model = Platform
     form_class = forms.PlatformForm
 
     def get_return_url(self, request, obj):
         return reverse('dcim:platform_list')
+
+
+class PlatformEditView(PlatformCreateView):
+    permission_required = 'dcim.change_platform'
 
 
 class PlatformBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
@@ -844,12 +921,16 @@ class DeviceLLDPNeighborsView(View):
         })
 
 
-class DeviceEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_device'
+class DeviceCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_device'
     model = Device
     form_class = forms.DeviceForm
     template_name = 'dcim/device_edit.html'
     default_return_url = 'dcim:device_list'
+
+
+class DeviceEditView(DeviceCreateView):
+    permission_required = 'dcim.change_device'
 
 
 class DeviceDeleteView(PermissionRequiredMixin, ObjectDeleteView):
@@ -970,7 +1051,7 @@ class DeviceConvertView(View):
 # Console ports
 #
 
-class ConsolePortAddView(PermissionRequiredMixin, ComponentCreateView):
+class ConsolePortCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_consoleport'
     parent_model = Device
     parent_field = 'device'
@@ -1083,7 +1164,7 @@ class ConsoleConnectionsBulkImportView(PermissionRequiredMixin, BulkImportView):
 # Console server ports
 #
 
-class ConsoleServerPortAddView(PermissionRequiredMixin, ComponentCreateView):
+class ConsoleServerPortCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_consoleserverport'
     parent_model = Device
     parent_field = 'device'
@@ -1182,6 +1263,15 @@ class ConsoleServerPortDeleteView(PermissionRequiredMixin, ComponentDeleteView):
     model = ConsoleServerPort
 
 
+class ConsoleServerPortBulkDisconnectView(PermissionRequiredMixin, BulkDisconnectView):
+    permission_required = 'dcim.change_consoleserverport'
+    model = ConsoleServerPort
+    form = forms.ConsoleServerPortBulkDisconnectForm
+
+    def disconnect_objects(self, cs_ports):
+        return ConsolePort.objects.filter(cs_port__in=cs_ports).update(cs_port=None, connection_status=None)
+
+
 class ConsoleServerPortBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     permission_required = 'dcim.delete_consoleserverport'
     cls = ConsoleServerPort
@@ -1192,7 +1282,7 @@ class ConsoleServerPortBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 # Power ports
 #
 
-class PowerPortAddView(PermissionRequiredMixin, ComponentCreateView):
+class PowerPortCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_powerport'
     parent_model = Device
     parent_field = 'device'
@@ -1305,7 +1395,7 @@ class PowerConnectionsBulkImportView(PermissionRequiredMixin, BulkImportView):
 # Power outlets
 #
 
-class PowerOutletAddView(PermissionRequiredMixin, ComponentCreateView):
+class PowerOutletCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_poweroutlet'
     parent_model = Device
     parent_field = 'device'
@@ -1404,6 +1494,17 @@ class PowerOutletDeleteView(PermissionRequiredMixin, ComponentDeleteView):
     model = PowerOutlet
 
 
+class PowerOutletBulkDisconnectView(PermissionRequiredMixin, BulkDisconnectView):
+    permission_required = 'dcim.change_poweroutlet'
+    model = PowerOutlet
+    form = forms.PowerOutletBulkDisconnectForm
+
+    def disconnect_objects(self, power_outlets):
+        return PowerPort.objects.filter(power_outlet__in=power_outlets).update(
+            power_outlet=None, connection_status=None
+        )
+
+
 class PowerOutletBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     permission_required = 'dcim.delete_poweroutlet'
     cls = PowerOutlet
@@ -1414,7 +1515,7 @@ class PowerOutletBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 # Interfaces
 #
 
-class InterfaceAddView(PermissionRequiredMixin, ComponentCreateView):
+class InterfaceCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_interface'
     parent_model = Device
     parent_field = 'device'
@@ -1432,6 +1533,18 @@ class InterfaceEditView(PermissionRequiredMixin, ComponentEditView):
 class InterfaceDeleteView(PermissionRequiredMixin, ComponentDeleteView):
     permission_required = 'dcim.delete_interface'
     model = Interface
+
+
+class InterfaceBulkDisconnectView(PermissionRequiredMixin, BulkDisconnectView):
+    permission_required = 'dcim.change_interface'
+    model = Interface
+    form = forms.InterfaceBulkDisconnectForm
+
+    def disconnect_objects(self, interfaces):
+        count, _ = InterfaceConnection.objects.filter(
+            Q(interface_a__in=interfaces) | Q(interface_b__in=interfaces)
+        ).delete()
+        return count
 
 
 class InterfaceBulkEditView(PermissionRequiredMixin, BulkEditView):
@@ -1452,7 +1565,7 @@ class InterfaceBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 # Device bays
 #
 
-class DeviceBayAddView(PermissionRequiredMixin, ComponentCreateView):
+class DeviceBayCreateView(PermissionRequiredMixin, ComponentCreateView):
     permission_required = 'dcim.add_devicebay'
     parent_model = Device
     parent_field = 'device'
