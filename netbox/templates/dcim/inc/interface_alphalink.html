@@ -18,11 +18,8 @@
         <td colspan="2" class="text-muted">Virtual interface</td>
     {% elif iface.connection %}
         {% with iface.connected_interface as connected_iface %}
-            <td>
-                <a href="{% url 'dcim:device' pk=connected_iface.device.pk %}">{{ connected_iface.device }}</a>
-            </td>
-            <td>
-                <span title="{{ connected_iface.get_form_factor_display }}">{{ connected_iface }}</span>
+            <td colspan="2">
+                <a href="{% url 'dcim:device' pk=connected_iface.device.pk %}" title="{{ connected_iface.get_form_factor_display }} - {{ connected_iface }}">{{ connected_iface.device }}</a>
             </td>
         {% endwith %}
     {% elif iface.circuit_termination %}
@@ -32,13 +29,12 @@
                 {% if peer_termination %}
                     {% if peer_termination.interface %}
                         <a href="{% url 'dcim:device' pk=peer_termination.interface.device.pk %}">{{ peer_termination.interface.device }}</a>
-                        (<a href="{% url 'dcim:site' slug=peer_termination.site.slug %}">{{ peer_termination.site }}</a>)
                     {% else %}
                         <a href="{% url 'dcim:site' slug=peer_termination.site.slug %}">{{ peer_termination.site }}</a>
                     {% endif %}
                     via
                 {% endif %}
-                <a href="{% url 'circuits:circuit' pk=iface.circuit_termination.circuit_id %}">{{ iface.circuit_termination.circuit }}</a>
+                <a href="{% url 'circuits:circuit' pk=iface.circuit_termination.circuit_id %}">{{ iface.circuit_termination.circuit.cid }}</a>
             </td>
         {% endwith %}
     {% else %}
