@@ -51,7 +51,7 @@
     {% if "-stack" in device.device_type.slug %}
         <li role="presentation"{% if active_tab == 'stacking' %} class="active"{% endif %}><a href="{% url 'dcim:device_stacking' pk=device.pk %}">Interfaces</a></li>
     {% endif %}
-    {% if "convert" == device.device_role.slug %}
+    {% if "convert" == device.device_role.slug or "switch-isol" in device.name %}
         <li role="presentation"{% if active_tab == 'convert' %} class="active"{% endif %}><a href="{% url 'dcim:device_convert' pk=device.pk %}">Interfaces</a></li>
     {% endif %}
 </ul>
