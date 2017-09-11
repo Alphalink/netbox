@@ -1,5 +1,5 @@
-<tr class="interface{% if not iface.enabled %} danger{% elif iface.connection and iface.connection.connection_status %} success{% elif iface.connection and not iface.connection.connection_status %} info{% endif %}">
-    <td>
+<tr class="interface{% if not iface.enabled %} danger{% elif iface.connection and iface.connection.connection_status or iface.circuit_termination %} success{% elif iface.connection and not iface.connection.connection_status %} info{% endif %}">
+    <td colspan="2">
         <i class="fa fa-fw fa-{{ icon|default:"exchange" }}"></i> <span title="{{ iface.get_form_factor_display }}">{{ iface.name }}</span>
         {% if iface.lag %}
             <span class="label label-primary">{{ iface.lag.name }}</span>
@@ -16,31 +16,6 @@
         </td>
     {% elif iface.is_virtual %}
         <td colspan="2" class="text-muted">Virtual interface</td>
-    {% elif iface.connection %}
-        {% with iface.connected_interface as connected_iface %}
-            <td colspan="2">
-                <a href="{% url 'dcim:device' pk=connected_iface.device.pk %}" title="{{ connected_iface.get_form_factor_display }} - {{ connected_iface }}">{{ connected_iface.device }}</a>
-            </td>
-        {% endwith %}
-    {% elif iface.circuit_termination %}
-        {% with iface.circuit_termination.get_peer_termination as peer_termination %}
-            <td colspan="2">
-                <i class="fa fa-fw fa-globe" title="Circuit"></i>
-                {% if peer_termination %}
-                    {% if peer_termination.interface %}
-                        <a href="{% url 'dcim:device' pk=peer_termination.interface.device.pk %}">{{ peer_termination.interface.device }}</a>
-                    {% else %}
-                        <a href="{% url 'dcim:site' slug=peer_termination.site.slug %}">{{ peer_termination.site }}</a>
-                    {% endif %}
-                    via
-                {% endif %}
-                <a href="{% url 'circuits:circuit' pk=iface.circuit_termination.circuit_id %}">{{ iface.circuit_termination.circuit.cid }}</a>
-            </td>
-        {% endwith %}
-    {% else %}
-        <td colspan="2">
-            <span class="text-muted">Not connected</span>
-        </td>
     {% endif %}
     <td colspan="2" class="text-right">
         {% if show_graphs %}
@@ -84,7 +59,42 @@
         {% endif %}
     </td>
 </tr>
-<tr><td colspan="7" {% if "disable" in iface.description.lower %} class="danger"{% endif %} style="border: 0px !important"><span class="text-muted">&nbsp;{% if iface.circuit_termination %}{{ iface.circuit_termination.circuit.description }}{% endif %}{% if iface.connection %}{{ iface.connection.description }}{% endif %}</span></td></tr>
+<tr>
+    {% if iface.connection %}
+    <td colspan="3" style="padding-left: 20px !important">
+        <i class="fa fa-fw fa-{{ icon|default:"mail-forward" }}"></i>
+        {% with iface.connected_interface as connected_iface %}
+        <span><a href="{% url 'dcim:device' pk=connected_iface.device.pk %}">{{ connected_iface.device }}</a></span></td><td><span title="{{ connected_iface.get_form_factor_display }}">{{ connected_iface }}</span>
+        {% endwith %}
+    </td>
+    {% elif iface.circuit_termination %}
+    <td colspan="4" style="padding-left: 20px !important">
+        <i class="fa fa-fw fa-{{ icon|default:"mail-forward" }}"></i>
+        {% with iface.circuit_termination.get_peer_termination as peer_termination %}
+                <i class="fa fa-fw fa-globe" title="Circuit"></i>
+                {% if peer_termination %}
+                    {% if peer_termination.interface %}
+                        <a href="{% url 'dcim:device' pk=peer_termination.interface.device.pk %}">{{ peer_termination.interface.device }}</a>
+                    {% else %}
+                        <a href="{% url 'dcim:site' slug=peer_termination.site.slug %}">{{ peer_termination.site }}</a>
+                    {% endif %}
+                    via
+                {% endif %}
+                <a href="{% url 'circuits:circuit' pk=iface.circuit_termination.circuit_id %}">{{ iface.circuit_termination.circuit.cid }}</a>
+        {% endwith %}
+    </td>
+    {% else %}
+    <td colspan="4" style="padding-left: 20px !important">
+        <i class="fa fa-fw fa-{{ icon|default:"mail-forward" }}"></i>
+        <span class="text-muted">Not connected</span>
+    </td>
+    {% endif %}
+</tr>
+<tr>
+    <td colspan="4" {% if "disable" in iface.description.lower %} class="danger"{% endif %} style="border: 0px !important; padding-left: 20px !important">
+        <i class="fa fa-fw fa-{{ icon|default:"tag" }}"></i> <span class="text-muted">{% if iface.circuit_termination %}{{ iface.circuit_termination.circuit.description }}{% endif %}{% if iface.connection %}{{ iface.connection.description }}{% endif %}</span>
+    </td>
+</tr>
 {% for ip in iface.ip_addresses.all %}
     <tr class="ipaddress">
         {% if selectable and perms.dcim.change_interface or perms.dcim.delete_interface %}
