@@ -218,7 +218,7 @@ class PlatformViewSet(ModelViewSet):
 
 class DeviceViewSet(WritableSerializerMixin, CustomFieldModelViewSet):
     queryset = Device.objects.select_related(
-        'device_type__manufacturer', 'device_role', 'tenant', 'platform', 'site', 'rack', 'parent_bay', 'cluster',
+        'device_type__manufacturer', 'device_role', 'tenant', 'platform', 'site', 'rack', 'parent_bay', 'cluster_alpha',
     ).prefetch_related(
         'primary_ip4__nat_outside', 'primary_ip6__nat_outside',
     )

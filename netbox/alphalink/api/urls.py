@@ -14,8 +14,8 @@ class AlphalinkRootView(routers.APIRootView):
 router = routers.DefaultRouter()
 router.APIRootView = AlphalinkRootView
 
-# Clusters
-router.register(r'clusters', views.ClusterViewSet)
+# ClusterAlphas
+router.register(r'cluster_alphas', views.ClusterAlphaViewSet)
 
 app_name = 'alphalink-api'
 urlpatterns = router.urls

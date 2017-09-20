@@ -3,19 +3,19 @@
 {% load render_table from django_tables2 %}
 {% load helpers %}
 
-{% block title %}{{ cluster }}{% endblock %}
+{% block title %}{{ cluster_alpha }}{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-sm-8 col-md-9">
         <ol class="breadcrumb">
-            <li>{{ cluster }}</li>
+            <li>{{ cluster_alpha }}</li>
         </ol>
     </div>
     <div class="col-sm-4 col-md-3">
-        <form action="{% url 'alphalink:cluster_list' %}" method="get">
+        <form action="{% url 'alphalink:cluster_alpha_list' %}" method="get">
             <div class="input-group">
-                <input type="text" name="q" class="form-control" placeholder="Search clusters" />
+                <input type="text" name="q" class="form-control" placeholder="Search cluster_alphas" />
                 <span class="input-group-btn">
                     <button type="submit" class="btn btn-primary">
                         <span class="fa fa-search" aria-hidden="true"></span>
@@ -26,21 +26,21 @@
     </div>
 </div>
 <div class="pull-right">
-    {% if perms.alphalink.change_cluster %}
-		<a href="{% url 'alphalink:cluster_edit' slug=cluster.slug %}" class="btn btn-warning">
+    {% if perms.alphalink.change_cluster_alpha %}
+		<a href="{% url 'alphalink:cluster_alpha_edit' slug=cluster_alpha.slug %}" class="btn btn-warning">
 			<span class="fa fa-pencil" aria-hidden="true"></span>
-			Edit this cluster
+			Edit this cluster_alpha
 		</a>
     {% endif %}
-    {% if perms.alphalink.delete_cluster %}
-		<a href="{% url 'alphalink:cluster_delete' slug=cluster.slug %}" class="btn btn-danger">
+    {% if perms.alphalink.delete_cluster_alpha %}
+		<a href="{% url 'alphalink:cluster_alpha_delete' slug=cluster_alpha.slug %}" class="btn btn-danger">
 			<span class="fa fa-trash" aria-hidden="true"></span>
-			Delete this cluster
+			Delete this cluster_alpha
 		</a>
     {% endif %}
 </div>
-<h1>{{ cluster.name }}</h1>
-{% include 'inc/created_updated.html' with obj=cluster %}
+<h1>{{ cluster_alpha.name }}</h1>
+{% include 'inc/created_updated.html' with obj=cluster_alpha %}
 <div class="row">
 	<div class="col-md-5 col-lg-6">
         <div class="panel panel-default">
@@ -51,7 +51,7 @@
                 <tr>
                     <td>Total Memory</td>
                     <td>
-                        {{ cluster.memory }} MB
+                        {{ cluster_alpha.memory }} MB
                     </td>
                 </tr>
                 <tr>
@@ -63,7 +63,7 @@
                 <tr>
                     <td>Total CPU</td>
                     <td>
-                        {{ cluster.cpu }}
+                        {{ cluster_alpha.cpu }}
                     </td>
                 </tr>
                 <tr>
@@ -79,8 +79,8 @@
                 <strong>Comments</strong>
             </div>
             <div class="panel-body">
-                {% if cluster.comments %}
-                    {{ cluster.comments|gfm }}
+                {% if cluster_alpha.comments %}
+                    {{ cluster_alpha.comments|gfm }}
                 {% else %}
                     <span class="text-muted">None</span>
                 {% endif %}

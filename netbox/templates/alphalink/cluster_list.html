@@ -6,16 +6,16 @@
 {% block content %}
 <div class="pull-right">
     {% if perms.alphalink.add_luster %}
-        <a href="{% url 'alphalink:cluster_add' %}" class="btn btn-primary">
+        <a href="{% url 'alphalink:cluster_alpha_add' %}" class="btn btn-primary">
             <span class="fa fa-plus" aria-hidden="true"></span>
-            Add a cluster
+            Add a cluster_alpha
         </a>
     {% endif %}
 </div>
 <h1>Clusters</h1>
 <div class="row">
 	<div class="col-md-12">
-        {% include 'utilities/obj_table.html' with bulk_edit_url='alphalink:cluster_bulk_edit' %}
+        {% include 'utilities/obj_table.html' with bulk_edit_url='alphalink:cluster_alpha_bulk_edit' %}
     </div>
 </div>
 {% endblock %}

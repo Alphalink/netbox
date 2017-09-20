@@ -28,29 +28,29 @@ from .fields import ASNField, MACAddressField
 
 
 #
-# Cluster
+# ClusterAlpha
 #
 
-class ClusterManager(NaturalOrderByManager):
+class ClusterAlphaManager(NaturalOrderByManager):
 
     def get_queryset(self):
         return self.natural_order_by('name')
 
 
 @python_2_unicode_compatible
-class Cluster(CreatedUpdatedModel):
+class ClusterAlpha(CreatedUpdatedModel):
     """
-    A cluster is a group of hypervisors whose support virtual resources
+    A cluster_alpha is a group of hypervisors whose support virtual resources
     """
     name = models.CharField(max_length=50, unique=True)
     slug = models.SlugField(unique=True)
     comments = models.TextField(blank=True)
     cpu = models.PositiveSmallIntegerField(default=12, verbose_name='CPU Number',
-                                           help_text='Number of CPU in cluster')
+                                           help_text='Number of CPU in cluster_alpha')
     memory = models.PositiveIntegerField(default=8192, verbose_name='Memory (MB)',
-                                           help_text='Total memory (in MB) in cluster')
+                                           help_text='Total memory (in MB) in cluster_alpha')
 
-    objects = ClusterManager()
+    objects = ClusterAlphaManager()
 
     class Meta:
       ordering = ['name']
@@ -59,14 +59,14 @@ class Cluster(CreatedUpdatedModel):
         return self.name
 
     def get_absolute_url(self):
-        return reverse('alphalink:cluster', args=[self.slug])
+        return reverse('alphalink:cluster_alpha', args=[self.slug])
 
     def resource_used(self, type):
         """
-        Determine the utilization of type (CPU|RAM) of the cluster and return it
+        Determine the utilization of type (CPU|RAM) of the cluster_alpha and return it
         """
         resource_device_type = DeviceType.objects.filter(model="VM Qemu/KVM")
-        resources = Device.objects.filter(cluster__name=self.name, device_type=resource_device_type)
+        resources = Device.objects.filter(cluster_alpha__name=self.name, device_type=resource_device_type)
         type_used = 0
         for resource in resources:
           resource_modules = InventoryItem.objects.filter(device=resource, name=type)
@@ -76,14 +76,14 @@ class Cluster(CreatedUpdatedModel):
 
     def cpu_utilization(self):
         """
-        Get the utilization cpu of the cluster and return it as a percentage.
+        Get the utilization cpu of the cluster_alpha and return it as a percentage.
         """
         cpu_used = self.resource_used("CPU")
         return int(float(cpu_used) / self.cpu * 100)
 
     def ram_utilization(self):
         """
-        Determine the utilization memory of the cluster and return it as a percentage.
+        Determine the utilization memory of the cluster_alpha and return it as a percentage.
         """
         ram_used = self.resource_used("RAM")
         return int(float(ram_used) / self.memory * 100)

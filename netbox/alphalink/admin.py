@@ -4,12 +4,12 @@ from django.db.models import Count
 from mptt.admin import MPTTModelAdmin
 
 from .models import (
-    Cluster,
+    ClusterAlpha,
 )
 
 
-@admin.register(Cluster)
-class ClusterAdmin(admin.ModelAdmin):
+@admin.register(ClusterAlpha)
+class ClusterAlphaAdmin(admin.ModelAdmin):
     list_display = ['name', 'slug', 'memory', 'cpu']
     prepopulated_fields = {
         'slug': ['name'],

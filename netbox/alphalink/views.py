@@ -25,7 +25,7 @@ from utilities.views import (
 
 from . import filters, forms, tables
 from .models import (
-    Cluster,
+    ClusterAlpha,
 )
 
 class Resource():
@@ -36,22 +36,22 @@ class Resource():
 
 
 #
-# Cluster
+# ClusterAlpha
 #
 
-class ClusterListView(ObjectListView):
-    queryset = Cluster.objects.all()
-    table = tables.ClusterTable
-    template_name = 'alphalink/cluster_list.html'
+class ClusterAlphaListView(ObjectListView):
+    queryset = ClusterAlpha.objects.all()
+    table = tables.ClusterAlphaTable
+    template_name = 'alphalink/cluster_alpha_list.html'
 
 
-def cluster(request, slug):
+def cluster_alpha(request, slug):
 
     resource_device_type = get_object_or_404(DeviceType.objects.filter(model="VM Qemu/KVM"))
 
-    cluster = get_object_or_404(Cluster.objects.all(), slug=slug)
-    members = Device.objects.filter(cluster=cluster).exclude(device_type=resource_device_type)
-    resources = Device.objects.filter(cluster=cluster, device_type=resource_device_type)
+    cluster_alpha = get_object_or_404(ClusterAlpha.objects.all(), slug=slug)
+    members = Device.objects.filter(cluster_alpha=cluster_alpha).exclude(device_type=resource_device_type)
+    resources = Device.objects.filter(cluster_alpha=cluster_alpha, device_type=resource_device_type)
 
     total_used = { 'RAM': 0, 'CPU': 0}
     # Get CPU and memory for each resource
@@ -71,35 +71,35 @@ def cluster(request, slug):
         total_used[module.name] = total_used[module.name] + int('0'+module.part_id)
       resource_modules.append(tmp_module)
 
-    return render(request, 'alphalink/cluster.html', {
-        'cluster': cluster,
+    return render(request, 'alphalink/cluster_alpha.html', {
+        'cluster_alpha': cluster_alpha,
         'members': members,
-        'total_cpu_free': cluster.cpu - total_used['CPU'],
-        'total_ram_free': cluster.memory - total_used['RAM'],
+        'total_cpu_free': cluster_alpha.cpu - total_used['CPU'],
+        'total_ram_free': cluster_alpha.memory - total_used['RAM'],
         'resources': resources,
         'resource_module': resource_modules,
     })
 
 
-class ClusterEditView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'alphalink.change_cluster'
-    model = Cluster
-    form_class = forms.ClusterForm
-    template_name = 'alphalink/cluster_edit.html'
-    default_return_url = 'alphalink:cluster_list'
+class ClusterAlphaEditView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'alphalink.change_cluster_alpha'
+    model = ClusterAlpha
+    form_class = forms.ClusterAlphaForm
+    template_name = 'alphalink/cluster_alpha_edit.html'
+    default_return_url = 'alphalink:cluster_alpha_list'
 
-class ClusterBulkEditView(PermissionRequiredMixin, BulkEditView):
-    permission_required = 'alphalink.change_cluster'
-    cls = Cluster
+class ClusterAlphaBulkEditView(PermissionRequiredMixin, BulkEditView):
+    permission_required = 'alphalink.change_cluster_alpha'
+    cls = ClusterAlpha
     #filter = filters.SiteFilter
     #form = forms.SiteBulkEditForm
-    template_name = 'alphalink/cluster_bulk_edit.html'
-    default_return_url = 'alphalink:cluster_list'
+    template_name = 'alphalink/cluster_alpha_bulk_edit.html'
+    default_return_url = 'alphalink:cluster_alpha_list'
 
-class ClusterDeleteView(PermissionRequiredMixin, ObjectDeleteView):
-    permission_required = 'alphalink.delete_cluster'
-    model = Cluster
-    default_return_url = 'alphalink:cluster_list'
+class ClusterAlphaDeleteView(PermissionRequiredMixin, ObjectDeleteView):
+    permission_required = 'alphalink.delete_cluster_alpha'
+    model = ClusterAlpha
+    default_return_url = 'alphalink:cluster_alpha_list'
 
 #
 # Resource
@@ -110,4 +110,4 @@ class ResourceEditView(PermissionRequiredMixin, ObjectEditView):
     model = Device
     form_class = DeviceForm
     template_name = 'alphalink/resource_edit.html'
-    default_return_url = 'alphalink:cluster_list'
+    default_return_url = 'alphalink:cluster_alpha_list'

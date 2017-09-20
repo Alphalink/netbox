@@ -7,17 +7,17 @@ from extras.filters import CustomFieldFilterSet
 from tenancy.models import Tenant
 from utilities.filters import NullableModelMultipleChoiceFilter
 from .models import (
-    Cluster,
+    ClusterAlpha,
 )
 
-class ClusterFilter(django_filters.FilterSet):
+class ClusterAlphaFilter(django_filters.FilterSet):
     q = django_filters.CharFilter(
         method='search',
         label='Search',
     )
 
     class Meta:
-        model = Cluster
+        model = ClusterAlpha
         fields = ['q', 'name']
 
     def search(self, queryset, name, value):

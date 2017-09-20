@@ -8,15 +8,15 @@ from . import views
 
 urlpatterns = [
 
-    # Cluster
-    url(r'^cluster/$', views.ClusterListView.as_view(), name='cluster_list'),
-    url(r'^cluster/add/$', views.ClusterEditView.as_view(), name='cluster_add'),
-    url(r'^cluster/(?P<slug>[\w-]+)/$', views.cluster, name='cluster'),
-    url(r'^cluster/(?P<slug>[\w-]+)/edit/$', views.ClusterEditView.as_view(), name='cluster_edit'),
-    url(r'^cluster/(?P<slug>[\w-]+)/delete/$', views.ClusterDeleteView.as_view(), name='cluster_delete'),
-    url(r'^cluster/edit/$', views.ClusterBulkEditView.as_view(), name='cluster_bulk_edit'),
+    # ClusterAlpha
+    url(r'^cluster_alpha/$', views.ClusterAlphaListView.as_view(), name='cluster_alpha_list'),
+    url(r'^cluster_alpha/add/$', views.ClusterAlphaEditView.as_view(), name='cluster_alpha_add'),
+    url(r'^cluster_alpha/(?P<slug>[\w-]+)/$', views.cluster_alpha, name='cluster_alpha'),
+    url(r'^cluster_alpha/(?P<slug>[\w-]+)/edit/$', views.ClusterAlphaEditView.as_view(), name='cluster_alpha_edit'),
+    url(r'^cluster_alpha/(?P<slug>[\w-]+)/delete/$', views.ClusterAlphaDeleteView.as_view(), name='cluster_alpha_delete'),
+    url(r'^cluster_alpha/edit/$', views.ClusterAlphaBulkEditView.as_view(), name='cluster_alpha_bulk_edit'),
 
     # Resource
-    url(r'^resource/add/(?P<comments>[\w-]+)', views.ResourceEditView.as_view(), name='cluster_add_resource'),
+    url(r'^resource/add/(?P<comments>[\w-]+)', views.ResourceEditView.as_view(), name='cluster_alpha_add_resource'),
 
 ]

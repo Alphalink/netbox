@@ -18,7 +18,7 @@ from utilities.forms import (
 
 from .formfields import MACAddressFormField
 from .models import (
-    Cluster
+    ClusterAlpha
 )
 
 
@@ -29,18 +29,18 @@ FORM_STATUS_CHOICES = [
 #FORM_STATUS_CHOICES += STATUS_CHOICES
 
 #
-# Clusters
+# ClusterAlphas
 #
 
-class ClusterForm(BootstrapMixin, forms.ModelForm):
+class ClusterAlphaForm(BootstrapMixin, forms.ModelForm):
 
     comments = CommentField()
     slug = SlugField()
 
     class Meta:
-        model = Cluster
+        model = ClusterAlpha
         fields = ['name','slug','comments','memory','cpu']
 
     def __init__(self, *args, **kwargs):
 
-        super(ClusterForm, self).__init__(*args, **kwargs)
+        super(ClusterAlphaForm, self).__init__(*args, **kwargs)

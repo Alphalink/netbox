@@ -8,7 +8,7 @@ from django.db.models import Q
 
 from extras.filters import CustomFieldFilterSet
 from tenancy.models import Tenant
-from alphalink.models import Cluster
+from alphalink.models import ClusterAlpha
 from utilities.filters import NullableModelMultipleChoiceFilter, NumericInFilter
 from .models import (
     ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
@@ -374,11 +374,11 @@ class DeviceFilter(CustomFieldFilterSet, django_filters.FilterSet):
         to_field_name='slug',
         label='Tenant (slug)',
     )
-    cluster = NullableModelMultipleChoiceFilter(
-        name='cluster',
-        queryset=Cluster.objects.all(),
+    cluster_alpha = NullableModelMultipleChoiceFilter(
+        name='cluster_alpha',
+        queryset=ClusterAlpha.objects.all(),
         to_field_name='slug',
-        label='Cluster (slug)',
+        label='ClusterAlpha (slug)',
     )
     platform_id = NullableModelMultipleChoiceFilter(
         queryset=Platform.objects.all(),

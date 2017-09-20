@@ -1,29 +1,29 @@
 from rest_framework import serializers
 
 from extras.api.customfields import CustomFieldModelSerializer
-from alphalink.models import Cluster
+from alphalink.models import ClusterAlpha
 
 #
-# Cluster
+# ClusterAlpha
 #
 
-class ClusterSerializer(serializers.ModelSerializer):
+class ClusterAlphaSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = Cluster
+        model = ClusterAlpha
         fields = ['id', 'name', 'slug', 'cpu', 'memory', 'comments']
 
 
-class NestedClusterSerializer(serializers.ModelSerializer):
-    url = serializers.HyperlinkedIdentityField(view_name='alphalink-api:cluster-detail')
+class NestedClusterAlphaSerializer(serializers.ModelSerializer):
+    url = serializers.HyperlinkedIdentityField(view_name='alphalink-api:cluster_alpha-detail')
 
     class Meta:
-        model = Cluster
+        model = ClusterAlpha
         fields = ['id', 'url', 'name', 'slug']
 
 
-class WritableClusterSerializer(serializers.ModelSerializer):
+class WritableClusterAlphaSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = Cluster
+        model = ClusterAlpha
         fields = ['id', 'name', 'slug', 'cpu', 'memory', 'comments']

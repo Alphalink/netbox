@@ -119,11 +119,11 @@
                         {% endif %}
                     </td>
                 </tr>
-                {% if device.cluster %}
+                {% if device.cluster_alpha %}
                   <tr>
                       <td>Cluster</td>
                       <td>
-                          <a href="{{ device.cluster.get_absolute_url }}">{{ device.cluster }}</a>
+                          <a href="{{ device.cluster_alpha.get_absolute_url }}">{{ device.cluster_alpha }}</a>
                       </td>
                   </tr>
                 {% endif %}
